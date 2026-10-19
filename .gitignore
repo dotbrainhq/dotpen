@@ -1,0 +1,9 @@
+.DS_Store
+build/
+.build/
+.swiftpm/
+DotMD.xcodeproj/
+DerivedData/
+node_modules/
+_trash/
+docs/superpowers/
