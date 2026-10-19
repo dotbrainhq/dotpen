@@ -11,6 +11,10 @@ import { escapeHtml } from './escape.js';
 
 export { escapeHtml };
 
+// Inline math may not contain a dollar sign, so prices like "$5 and $10" before a real formula stay text.
+texmath.rules.dollars.inline.find((rule) => rule.name === 'math_inline').rex =
+  /\$((?:[^\s\\$])|(?:[^\s$][^$]*?[^\s\\$]))\$/gy;
+
 const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
   .use(taskLists, { enabled: false })
   .use(footnote)

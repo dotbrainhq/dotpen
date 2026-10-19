@@ -26,6 +26,12 @@ test('plain dollar amounts stay text', () => {
   assert.match(html, /\$5 and \$10/);
 });
 
+test('dollar amounts before a formula stay text', () => {
+  const html = renderDocument('It costs $5 and $10 per month, and the bucket follows $r = n / t$.');
+  assert.match(html, /It costs \$5 and \$10 per month, and the bucket follows <eq><span class="katex">/);
+  assert.doesNotMatch(html, /katex-error/);
+});
+
 test('inline math renders with KaTeX', () => {
   const html = renderDocument('The rate is $r = n / t$ here.');
   assert.match(html, /class="katex"/);
