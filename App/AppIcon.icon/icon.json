@@ -1,0 +1,22 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.00000,0.53071,0.35482,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "dot.svg",
+          "name": "dot"
+        },
+        {
+          "image-name": "trail.svg",
+          "name": "trail"
+        }
+      ]
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

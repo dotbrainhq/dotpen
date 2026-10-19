@@ -1,0 +1,40 @@
+name: DotMD
+options:
+  bundleIdPrefix: app.dotmd
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+packages:
+  DotMDCore:
+    path: Packages/DotMDCore
+  DotMDRender:
+    path: Packages/DotMDRender
+targets:
+  DotMD:
+    type: application
+    platform: macOS
+    sources:
+      - App
+    dependencies:
+      - package: DotMDCore
+        product: DotMDCore
+      - package: DotMDRender
+        product: DotMDRender
+    settings:
+      base:
+        # Placeholder ID and ad hoc signing until the developer account is ready.
+        PRODUCT_BUNDLE_IDENTIFIER: app.dotmd.DotMD
+        PRODUCT_NAME: DotMD
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: App/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: DotMD
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: App/DotMD.entitlements
+        SWIFT_VERSION: "6.0"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
