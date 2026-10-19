@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/assets/cover-dark.png">
+  <img src=".github/assets/cover-light.png" alt="DotMD: read what your agents write. A free, open-source Mac app. Next to the tagline, a Markdown plan written by Claude Code, rendered by DotMD with its status, heading, a formula, ticked and open tasks, and a Swift code block.">
+</picture>
+
 # DotMD
 
 DotMD is Preview for Markdown, with a review desk for what AI agents write. Open any `.md` file and read it rendered, the way it was meant to look. Point it at the folders where Claude Code, Codex, or Cursor work, and it shows what's new, marks what changed since you last read a file, and sends your comments back to the agent.
