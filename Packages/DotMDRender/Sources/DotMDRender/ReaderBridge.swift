@@ -1,9 +1,15 @@
 import Foundation
 
+/// Which prototype layout the page uses: the Files window with its list showing, or a document on its own.
+public enum ReaderLayout: String, Sendable {
+    case files, document
+}
+
 /// Calls from Swift into window.DotMD in the renderer.
 public enum ReaderCommand: Sendable {
     case render(markdown: String, options: ReadingOptions)
     case setReadingOptions(ReadingOptions)
+    case setLayout(ReaderLayout)
 
     public var javaScript: String {
         switch self {
@@ -11,6 +17,8 @@ public enum ReaderCommand: Sendable {
             return "window.DotMD.render(\(Self.json(RenderPayload(markdown: markdown, options: options))))"
         case let .setReadingOptions(options):
             return "window.DotMD.setReadingOptions(\(Self.json(options)))"
+        case let .setLayout(layout):
+            return "window.DotMD.setLayout(\(Self.json(layout.rawValue)))"
         }
     }
 

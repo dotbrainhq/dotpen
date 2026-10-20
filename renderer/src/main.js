@@ -169,6 +169,9 @@ window.DotMD = {
     await renderDiagrams(doc);
     post({ type: 'rendered' });
   },
+  setLayout(layout) {
+    root.dataset.layout = layout === 'document' ? 'document' : 'files';
+  },
   setReadingOptions(options) {
     applyOptions(options);
     applyPictureTheme(document.getElementById('doc'));

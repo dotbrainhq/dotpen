@@ -59,3 +59,7 @@ import Testing
     #expect(FileManager.default.fileExists(atPath: RendererResources.stylesheet.path))
     #expect(FileManager.default.fileExists(atPath: RendererResources.fontsDirectory.path))
 }
+
+@Test func layoutCommandPassesTheLayoutName() {
+    #expect(ReaderCommand.setLayout(.document).javaScript == #"window.DotMD.setLayout("document")"#)
+}

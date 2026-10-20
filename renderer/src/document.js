@@ -6,7 +6,7 @@ import katex from 'katex';
 import hljs from 'highlight.js/lib/common';
 import { lineNumbers } from './lines.js';
 import { alerts } from './alerts.js';
-import { splitFrontMatter, frontMatterHTML } from './frontmatter.js';
+import { splitFrontMatter, statusLineHTML } from './frontmatter.js';
 import { escapeHtml } from './escape.js';
 
 export { escapeHtml };
@@ -56,6 +56,6 @@ export function renderDocument(src, sanitize) {
   mathStore = [];
   const store = mathStore;
   const nonce = mathNonce;
-  const clean = sanitize(frontMatterHTML(fields) + md.render(body));
+  const clean = sanitize(statusLineHTML(fields) + md.render(body));
   return clean.replace(new RegExp(`<span data-math-slot="${nonce}-(\\d+)"></span>`, 'g'), (_, i) => store[Number(i)]);
 }

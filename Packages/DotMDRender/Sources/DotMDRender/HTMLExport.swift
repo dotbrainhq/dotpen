@@ -6,7 +6,7 @@ public enum HTMLExport {
     public static func document(bodyHTML: String, title: String, options: ReadingOptions, stylesheet: String) -> String {
         """
         <!doctype html>
-        <html lang="en" data-size="\(options.size.rawValue)" data-font="\(options.font.rawValue)" data-width="\(options.width.rawValue)" data-paper="\(options.paper.rawValue)">
+        <html lang="en" data-layout="document" data-size="\(options.size.rawValue)" data-font="\(options.font.rawValue)" data-width="\(options.width.rawValue)" data-paper="\(options.paper.rawValue)">
         <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,7 +15,7 @@ public enum HTMLExport {
         <style>\(stylesheet)</style>
         </head>
         <body>
-        <main id="doc" class="doc">\(bodyHTML)</main>
+        <div class="paper"><div class="gutter"></div><main id="doc" class="doc">\(bodyHTML)</main><aside class="margin"></aside></div>
         </body>
         </html>
         """
