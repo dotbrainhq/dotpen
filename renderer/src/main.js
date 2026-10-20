@@ -1,13 +1,46 @@
 import { renderDocument, escapeHtml } from './document.js';
+import { createSanitizer } from './sanitize.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
+const sanitize = createSanitizer(window);
+const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
 function applyOptions(options = {}) {
   root.dataset.size = options.size ?? 'medium';
   root.dataset.font = options.font ?? 'serif';
   root.dataset.width = options.width ?? 'medium';
   root.dataset.paper = options.paper ?? 'auto';
+}
+
+function pageIsDark() {
+  const paper = root.dataset.paper;
+  if (paper === 'night') return true;
+  if (paper === 'white' || paper === 'paper') return false;
+  return darkQuery.matches;
+}
+
+// <picture> sources follow DotMD's page color, not the system appearance.
+function applyPictureTheme(doc) {
+  const dark = pageIsDark();
+  for (const source of doc.querySelectorAll('picture source[media]')) {
+    const media = source.dataset.media ?? source.getAttribute('media');
+    source.dataset.media = media;
+    if (!/prefers-color-scheme/i.test(media)) continue;
+    const wantsDark = /prefers-color-scheme\s*:\s*dark/i.test(media);
+    source.setAttribute('media', wantsDark === dark ? 'all' : 'not all');
+  }
+}
+
+// A missing or blocked image becomes a quiet labeled box instead of a broken-image icon.
+function showMissing(img) {
+  const box = document.createElement('span');
+  const label = img.getAttribute('alt') || 'Image not available';
+  box.className = 'image-missing';
+  box.setAttribute('role', 'img');
+  box.setAttribute('aria-label', label);
+  box.textContent = label;
+  (img.closest('picture') ?? img).replaceWith(box);
 }
 
 function addCopyButtons(doc) {
@@ -95,13 +128,22 @@ async function renderDiagrams(doc) {
   }
 }
 
+document.addEventListener('error', (event) => {
+  if (event.target instanceof HTMLImageElement) showMissing(event.target);
+}, true);
+
+darkQuery.addEventListener('change', () => applyPictureTheme(document.getElementById('doc')));
+
 document.addEventListener('click', (event) => {
   const link = event.target.closest('a[href]');
   if (!link) return;
   event.preventDefault();
   const href = link.getAttribute('href');
   if (href.startsWith('#')) {
-    document.getElementById(decodeURIComponent(href.slice(1)))?.scrollIntoView({ behavior: 'smooth' });
+    const fragment = href.slice(1);
+    let id = fragment;
+    try { id = decodeURIComponent(fragment); } catch { /* malformed escape: use the raw fragment */ }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
   post({ type: 'linkActivated', href });
@@ -113,7 +155,12 @@ window.DotMD = {
     const doc = document.getElementById('doc');
     const y = window.scrollY;
     const oldHeights = [...doc.querySelectorAll('figure.mermaid-block')].map((figure) => figure.offsetHeight);
-    doc.innerHTML = renderDocument(markdown);
+    doc.innerHTML = renderDocument(markdown, sanitize);
+    applyPictureTheme(doc);
+    // An image whose source was stripped (http) never fires an error, so it gets its placeholder now.
+    for (const img of doc.querySelectorAll('img:not([src]):not([srcset])')) {
+      if (!img.closest('picture')?.querySelector('source[srcset]')) showMissing(img);
+    }
     placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
     window.scrollTo(0, y);
@@ -122,6 +169,7 @@ window.DotMD = {
   },
   setReadingOptions(options) {
     applyOptions(options);
+    applyPictureTheme(document.getElementById('doc'));
   },
   exportHTML() {
     const clone = document.getElementById('doc').cloneNode(true);
