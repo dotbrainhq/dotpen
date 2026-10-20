@@ -1,0 +1,61 @@
+import Foundation
+import Testing
+@testable import DotMDRender
+
+@Test func readingOptionsDefaults() {
+    let options = ReadingOptions()
+    #expect(options.size == .medium)
+    #expect(options.font == .serif)
+    #expect(options.width == .medium)
+    #expect(options.paper == .auto)
+}
+
+@Test func readingOptionsRoundTripThroughRawValue() {
+    let options = ReadingOptions(size: .large, font: .mono, width: .wide, paper: .night)
+    #expect(ReadingOptions(rawValue: options.rawValue) == options)
+}
+
+@Test func readingOptionsFillMissingFieldsWithDefaults() {
+    let options = ReadingOptions(rawValue: #"{"size":"large"}"#)
+    #expect(options == ReadingOptions(size: .large))
+}
+
+@Test func readingOptionsRejectBadRawValue() {
+    #expect(ReadingOptions(rawValue: "not json") == nil)
+}
+
+@Test func renderCommandEscapesContent() throws {
+    let command = ReaderCommand.render(markdown: "# \"Quoted\"\n</script>", options: ReadingOptions())
+    let js = command.javaScript
+    #expect(js.hasPrefix("window.DotMD.render("))
+    #expect(js.hasSuffix(")"))
+    #expect(!js.contains("</script>"))
+    let json = String(js.dropFirst("window.DotMD.render(".count).dropLast())
+    let object = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+    #expect(object?["markdown"] as? String == "# \"Quoted\"\n</script>")
+    let options = object?["options"] as? [String: String]
+    #expect(options?["size"] == "medium")
+}
+
+@Test func setReadingOptionsCommand() {
+    let js = ReaderCommand.setReadingOptions(ReadingOptions(size: .small, font: .sans, width: .narrow, paper: .paper)).javaScript
+    #expect(js.contains("window.DotMD.setReadingOptions("))
+    #expect(js.contains("\"paper\":\"paper\""))
+    #expect(js.contains("\"size\":\"small\""))
+}
+
+@Test func messagesParse() {
+    #expect(ReaderMessage(body: ["type": "ready"]) == .ready)
+    #expect(ReaderMessage(body: ["type": "rendered"]) == .rendered)
+    #expect(ReaderMessage(body: ["type": "linkActivated", "href": "https://example.com"]) == .linkActivated("https://example.com"))
+    #expect(ReaderMessage(body: ["type": "copyText", "text": "let x"]) == .copyText("let x"))
+    #expect(ReaderMessage(body: ["type": "diagramError", "line": 12, "message": "Parse error"]) == .diagramError(line: 12, message: "Parse error"))
+    #expect(ReaderMessage(body: ["type": "unknown"]) == nil)
+    #expect(ReaderMessage(body: "garbage") == nil)
+}
+
+@Test func bundledRendererIsPresent() {
+    #expect(FileManager.default.fileExists(atPath: RendererResources.indexHTML.path))
+    #expect(FileManager.default.fileExists(atPath: RendererResources.stylesheet.path))
+    #expect(FileManager.default.fileExists(atPath: RendererResources.fontsDirectory.path))
+}
