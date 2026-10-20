@@ -447,6 +447,8 @@ public final class Library {
 
     /// Replaces a document's row in its folder in place, or adds it when the folder doesn't list it yet.
     private func put(_ document: Document) {
+        // Checked before update: even a no-op mutation of folders notifies observers.
+        guard state(document.folderID)?.documents.first(where: { $0.id == document.id }) != document else { return }
         update(document.folderID) { state in
             if let index = state.documents.firstIndex(where: { $0.id == document.id }) {
                 state.documents[index] = document

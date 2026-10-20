@@ -1,6 +1,14 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import DotMDCore
+
+/// Counts observation change notifications. The closure is Sendable, so the count goes through a Mutex.
+private final class ChangeCounter: Sendable {
+    private let value = Mutex(0)
+    func increment() { value.withLock { $0 += 1 } }
+    var count: Int { value.withLock { $0 } }
+}
 
 @MainActor
 private func makeLibrary() throws -> Library {
@@ -456,4 +464,24 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     let states = readStates(library)
     #expect(states["node_modules/pkg/README.md"] == .read)
     #expect(states["docs/new.md"] == .new)
+}
+
+/// An event for a file whose row is unchanged leaves the list as is, so the list doesn't redraw on every write.
+@MainActor @Test func anUnchangedFileLeavesTheListAsIs() async throws {
+    let temp = try TempFolder()
+    let readme = try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let before = library.folders
+    let changes = ChangeCounter()
+    withObservationTracking {
+        _ = library.folders
+    } onChange: {
+        changes.increment()
+    }
+    await library.handle([readme.path], in: id)
+    #expect(library.folders == before)
+    #expect(changes.count == 0)
 }
