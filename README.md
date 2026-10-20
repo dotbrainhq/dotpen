@@ -39,10 +39,6 @@ npm test
 npm run build
 ```
 
-## Quick Look
-
-Select a Markdown file in Finder and press Space to preview it with DotMD. macOS shows one preview per file type, so if another app such as Obsidian also previews Markdown, its preview may open instead. To use DotMD's, open System Settings > General > Login Items & Extensions > Quick Look and turn off the other app's extension.
-
 ## Project layout
 
 | Path | What it is |
