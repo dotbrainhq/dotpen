@@ -10,13 +10,6 @@ function applyOptions(options = {}) {
   root.dataset.paper = options.paper ?? 'auto';
 }
 
-function isDark() {
-  const paper = root.dataset.paper;
-  if (paper === 'night') return true;
-  if (paper === 'white' || paper === 'paper') return false;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches;
-}
-
 function addCopyButtons(doc) {
   for (const figure of doc.querySelectorAll('figure.code-block')) {
     const button = document.createElement('button');
@@ -45,21 +38,29 @@ function loadScript(src) {
 
 let diagramCount = 0;
 
+async function renderDiagram(source, theme) {
+  window.mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme,
+    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+  });
+  const { svg } = await window.mermaid.render(`dotmd-diagram-${++diagramCount}`, source);
+  return svg;
+}
+
+// Mermaid bakes colors into the SVG, so each diagram is drawn in both themes and the
+// stylesheet shows the one that fits the page color, the system appearance, or print.
 async function renderDiagrams(doc) {
   const blocks = [...doc.querySelectorAll('figure.mermaid-block')];
   if (!blocks.length) return;
   if (!window.mermaid) await loadScript('mermaid.js');
-  window.mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: isDark() ? 'dark' : 'neutral',
-    fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
-  });
   for (const figure of blocks) {
     const source = figure.querySelector('pre.mermaid')?.textContent ?? '';
     try {
-      const { svg } = await window.mermaid.render(`dotmd-diagram-${++diagramCount}`, source);
-      figure.innerHTML = svg;
+      const light = await renderDiagram(source, 'neutral');
+      const dark = await renderDiagram(source, 'dark');
+      figure.innerHTML = `<div class="diagram-light">${light}</div><div class="diagram-dark">${dark}</div>`;
       figure.classList.add('rendered');
     } catch (error) {
       const message = String(error?.message ?? error).split('\n')[0];

@@ -134,6 +134,13 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .mermaid-block { margin: 1.2em 0; padding: 18px; border-radius: 12px; background: var(--fill); box-shadow: inset 0 0 0 0.5px var(--line); text-align: center; }
 .mermaid-block pre.mermaid { visibility: hidden; height: 40px; margin: 0; }
 .mermaid-block svg { max-width: 100%; height: auto; }
+.mermaid-block .diagram-dark { display: none; }
+:root[data-paper="night"] .mermaid-block .diagram-light { display: none; }
+:root[data-paper="night"] .mermaid-block .diagram-dark { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root[data-paper="auto"] .mermaid-block .diagram-light { display: none; }
+  :root[data-paper="auto"] .mermaid-block .diagram-dark { display: block; }
+}
 .diagram-error { text-align: left; font-family: var(--font-ui); font-size: 13px; }
 .diagram-error b { display: block; margin-bottom: 4px; }
 .diagram-error code { background: none; padding: 0; color: var(--ink-2); }
@@ -144,9 +151,19 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
   .doc, .copy { transition: none; }
 }
 
+/* Paper is always white, whatever page color the window uses. */
 @media print {
-  :root { --bg: #ffffff; --ink: #121a1a; }
+  :root, :root[data-paper] { --bg: #ffffff; --ink: #121a1a; --ink-2: #3b4545; --ink-3: #5c6666; --line: #e2e7e7; --fill: #f1f4f4; --code-bg: #f4f6f6; --accent: #008450; --accent-wash: #def8e8; color-scheme: light; }
+  :root[data-paper] .hljs-keyword { color: #a1306b; }
+  :root[data-paper] .hljs-string { color: #1f6f43; }
+  :root[data-paper] .hljs-number { color: #1c5fb4; }
+  :root[data-paper] .hljs-title { color: #7a4ec2; }
+  /* Print drops backgrounds by default, which would hide the filled checkbox. */
+  .task-list-item-checkbox { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  :root[data-paper] .task-list-item-checkbox:checked { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m4 8.5 2.5 2.5L12 5.5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
   .doc { max-width: none; padding: 0; }
   .copy { display: none; }
+  :root[data-paper] .mermaid-block .diagram-light { display: block; }
+  :root[data-paper] .mermaid-block .diagram-dark { display: none; }
   .code-block, .mermaid-block, .doc table { break-inside: avoid; }
 }
