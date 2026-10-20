@@ -3,10 +3,10 @@ import Synchronization
 import Testing
 @testable import DotMDCore
 
-/// Collects paths from the watcher's queue.
-private final class PathLog: Sendable {
-    let paths = Mutex<[String]>([])
-    var all: [String] { paths.withLock { $0 } }
+/// Collects events from the watcher's queue.
+private final class EventLog: Sendable {
+    let events = Mutex<[FolderEvent]>([])
+    var all: [FolderEvent] { events.withLock { $0 } }
 }
 
 @Test func bookmarksResolveToTheSameFolder() throws {
@@ -23,17 +23,29 @@ private final class PathLog: Sendable {
 
 @Test func watcherReportsNewAndDeletedFiles() async throws {
     let temp = try TempFolder()
-    let log = PathLog()
-    let watcher = FolderWatcher(url: temp.url) { paths in log.paths.withLock { $0 += paths } }
+    let log = EventLog()
+    let watcher = FolderWatcher(url: temp.url) { events in log.events.withLock { $0 += events } }
     defer { watcher.cancel() }
+    let notes = temp.url.appending(path: "notes.md").path
     try await Task.sleep(for: .milliseconds(300))
     try temp.write("notes.md", "# Notes")
     try await Task.sleep(for: .seconds(1))
-    #expect(log.all.contains(temp.url.appending(path: "notes.md").path))
-    log.paths.withLock { $0.removeAll() }
+    #expect(log.all.contains { $0.path == notes && !$0.isDirectory })
+    log.events.withLock { $0.removeAll() }
     try temp.remove("notes.md")
     try await Task.sleep(for: .seconds(1))
-    #expect(log.all.contains(temp.url.appending(path: "notes.md").path))
+    #expect(log.all.contains { $0.path == notes && $0.isRemoved })
+}
+
+@Test func watcherFlagsFolders() async throws {
+    let temp = try TempFolder()
+    let log = EventLog()
+    let watcher = FolderWatcher(url: temp.url) { events in log.events.withLock { $0 += events } }
+    defer { watcher.cancel() }
+    try await Task.sleep(for: .milliseconds(300))
+    try FileManager.default.createDirectory(at: temp.url.appending(path: "v1.2"), withIntermediateDirectories: false)
+    try await Task.sleep(for: .seconds(1))
+    #expect(log.all.contains { $0.path == temp.url.appending(path: "v1.2").path && $0.isDirectory })
 }
 
 private final class WatcherBox: Sendable {

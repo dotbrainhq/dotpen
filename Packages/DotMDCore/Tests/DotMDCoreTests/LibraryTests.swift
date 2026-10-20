@@ -151,3 +151,118 @@ private func makeLibrary() throws -> Library {
     library.setColor(.orange, for: id)
     #expect(library.folders.first?.folder.color == .orange)
 }
+
+/// Polls until the condition holds or the deadline passes, then returns whether it held.
+@MainActor
+private func eventually(within deadline: Duration = .seconds(2), _ condition: () -> Bool) async throws -> Bool {
+    let end = ContinuousClock.now + deadline
+    while !condition() {
+        guard ContinuousClock.now < end else { return false }
+        try await Task.sleep(for: .milliseconds(20))
+    }
+    return true
+}
+
+@MainActor @Test func removingAFolderDeletesItsRow() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let database = try LibraryDatabase.inMemory()
+    let first = Library(database: database)
+    try await first.addFolder(temp.url)
+    let id = try #require(first.folders.first?.id)
+    first.removeFolder(id)
+    let second = Library(database: database)
+    await second.start()
+    #expect(second.folders.isEmpty)
+}
+
+@MainActor @Test func removingAFolderWhileItsFirstScanRunsLeavesNoWatcher() async throws {
+    let temp = try TempFolder()
+    for index in 0..<500 {
+        try temp.write("notes/\(index).md", "# Note \(index)")
+    }
+    let library = try makeLibrary()
+    let adding = Task { try await library.addFolder(temp.url) }
+    #expect(try await eventually { !library.folders.isEmpty })
+    let id = try #require(library.folders.first?.id)
+    library.removeFolder(id)
+    try await adding.value
+    #expect(library.folders.isEmpty)
+    #expect(library.watcherCountForTesting == 0)
+}
+
+@MainActor @Test func aDeletedDottedFolderLeavesTheList() async throws {
+    let temp = try TempFolder()
+    let elsewhere = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("notes.archive/a.md", "# A")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let archive = temp.url.appending(path: "notes.archive")
+    try FileManager.default.moveItem(at: archive, to: elsewhere.url.appending(path: "notes.archive"))
+    await library.handle([archive.path], in: id)
+    #expect(library.folders.first?.documents.map(\.relativePath) == ["README.md"])
+}
+
+@MainActor @Test func showingIgnoredPathsListsThemAndHidingThemAgainDoesNot() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("node_modules/pkg/README.md", "# Dependency")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let listsDependency = { library.folders.first?.documents.contains { $0.relativePath == "node_modules/pkg/README.md" } == true }
+    library.showIgnored = true
+    #expect(try await eventually(listsDependency))
+    library.showIgnored = false
+    #expect(try await eventually { !listsDependency() })
+}
+
+@MainActor @Test func overlappingEventsForOneFileKeepTheNewestContent() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let file = try temp.write("plan.md", "# One")
+    async let first: () = library.handle([file.path], in: id)
+    try temp.write("plan.md", "# Two")
+    async let second: () = library.handle([file.path], in: id)
+    _ = await (first, second)
+    #expect(library.folders.first?.documents.first { $0.relativePath == "plan.md" }?.title == "Two")
+}
+
+@MainActor @Test func reconnectingKeepsReadState() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    let plan = try #require(library.folders.first?.documents.first { $0.relativePath == "plan.md" })
+    library.markUnread(plan)
+    let before = Dictionary(uniqueKeysWithValues: (library.folders.first?.documents ?? []).map { ($0.relativePath, $0.readState) })
+    library.removeFolderWatchersForTesting()
+    try await library.reconnect(id, to: temp.url)
+    let after = Dictionary(uniqueKeysWithValues: (library.folders.first?.documents ?? []).map { ($0.relativePath, $0.readState) })
+    #expect(after == before)
+    #expect(after["plan.md"] == .new)
+    #expect(library.folders.first?.accessLost == false)
+    #expect(library.watcherCountForTesting == 1)
+}
+
+@MainActor @Test func anEventForARemovedRootLosesAccess() async throws {
+    let temp = try TempFolder()
+    let elsewhere = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    await library.handle([temp.url.path], in: id)
+    #expect(library.folders.first?.accessLost == true)
+    #expect(library.folders.first?.documents.map(\.relativePath) == ["README.md"])
+    #expect(library.watcherCountForTesting == 0)
+}

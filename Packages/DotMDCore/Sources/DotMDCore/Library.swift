@@ -24,10 +24,12 @@ public final class Library {
     public private(set) var folders: [FolderState] = []
     /// Documents being written right now: changed within the last few seconds.
     public private(set) var writing: Set<Int64> = []
-    /// Shows paths the ignore rules would hide. Changing it rescans every folder.
+    /// Shows paths the ignore rules would hide. Changing it rescans every folder; the newest setting wins.
     public var showIgnored = false {
         didSet {
-            if showIgnored != oldValue { Task { await rescanAll() } }
+            guard showIgnored != oldValue else { return }
+            rescanAllTask?.cancel()
+            rescanAllTask = Task { await rescanAll() }
         }
     }
     /// How long a file counts as being written after its last change.
@@ -37,6 +39,11 @@ public final class Library {
     @ObservationIgnored private var watchers: [Int64: FolderWatcher] = [:]
     @ObservationIgnored private var writingTimers: [Int64: Task<(), Never>] = [:]
     @ObservationIgnored private var started = false
+    /// The URL each folder's security-scoped access was started on. Paths use the canonical root instead.
+    @ObservationIgnored private var accessURLs: [Int64: URL] = [:]
+    /// The newest job per folder. Scans and event batches for one folder run one after another.
+    @ObservationIgnored private var folderWork: [Int64: Task<(), Never>] = [:]
+    @ObservationIgnored private var rescanAllTask: Task<(), Never>?
 
     public init(database: LibraryDatabase) {
         self.database = database
@@ -57,10 +64,14 @@ public final class Library {
         }
     }
 
-    /// Watches a folder the person chose. Adding a folder that is already watched does nothing.
+    /// Watches a folder the person chose. Adding a folder that is already watched does nothing, unless its access
+    /// was lost: then it reconnects to the new URL.
     public func addFolder(_ url: URL) async throws {
         let root = FolderAccess.canonical(url)
-        guard !folders.contains(where: { $0.folder.path == root.path }) else { return }
+        if let existing = folders.first(where: { $0.folder.path == root.path }) {
+            if existing.accessLost { try await reconnect(existing.id, to: url) }
+            return
+        }
         let bookmark = try FolderAccess.bookmark(for: url)
         let folder = try database.insert(WatchedFolder(
             bookmark: bookmark,
@@ -83,7 +94,7 @@ public final class Library {
 
     public func removeFolder(_ id: Int64) {
         watchers.removeValue(forKey: id)?.cancel()
-        if let url = state(id)?.url { FolderAccess.stop(url) }
+        releaseAccess(id)
         try? database.deleteFolder(id: id)
         folders.removeAll { $0.id == id }
     }
@@ -133,13 +144,17 @@ public final class Library {
 
     // MARK: Indexing
 
+    /// Resolves the folder's bookmark, starts watching, then scans. The watcher starts first so changes made during
+    /// the scan aren't lost: their batches queue behind the scan and apply after it.
     private func open(_ folder: WatchedFolder, firstScan: Bool) async {
         guard let id = folder.id else { return }
         watchers.removeValue(forKey: id)?.cancel()
+        releaseAccess(id)
         guard let resolved = try? FolderAccess.resolve(folder.bookmark) else {
             update(id) { $0.url = nil }
             return
         }
+        accessURLs[id] = resolved.url
         var folder = folder
         let root = FolderAccess.canonical(resolved.url)
         if let fresh = resolved.refreshedBookmark { folder.bookmark = fresh }
@@ -149,22 +164,58 @@ public final class Library {
             state.folder = folder
             state.url = root
         }
-        await rescan(id, firstScan: firstScan)
-        watchers[id] = FolderWatcher(url: root) { [weak self] paths in
-            Task { @MainActor [weak self] in await self?.handle(paths, in: id) }
+        watchers[id] = FolderWatcher(url: root) { [weak self] events in
+            Task { @MainActor [weak self] in await self?.handle(events, in: id) }
+        }
+        await serialized(id) { [weak self] in await self?.performRescan(id, firstScan: firstScan) }
+        if state(id) == nil {
+            // Removed while the scan ran. removeFolder already let go of both; this keeps a late open from holding them.
+            watchers.removeValue(forKey: id)?.cancel()
+            releaseAccess(id)
         }
     }
 
+    private func releaseAccess(_ id: Int64) {
+        if let url = accessURLs.removeValue(forKey: id) { FolderAccess.stop(url) }
+    }
+
+    /// The folder's root went away: keep its rows and read state, show it as needing reconnection.
+    private func loseAccess(_ id: Int64) {
+        watchers.removeValue(forKey: id)?.cancel()
+        releaseAccess(id)
+        update(id) { $0.url = nil }
+    }
+
+    /// Runs work after every earlier job for the same folder has finished, and returns when it has run.
+    /// Work must not call serialized for the same folder, or it waits on itself.
+    private func serialized(_ id: Int64, _ work: @escaping @MainActor () async -> ()) async {
+        let previous = folderWork[id]
+        let task = Task { @MainActor in
+            await previous?.value
+            await work()
+        }
+        folderWork[id] = task
+        await task.value
+        if folderWork[id] == task { folderWork[id] = nil }
+    }
+
     private func rescanAll() async {
-        for folder in folders {
-            await rescan(folder.id, firstScan: false)
+        for id in folders.map(\.id) {
+            guard !Task.isCancelled else { return }
+            await rescan(id, firstScan: false)
         }
     }
 
     private func rescan(_ id: Int64, firstScan: Bool) async {
+        await serialized(id) { [weak self] in await self?.performRescan(id, firstScan: firstScan) }
+    }
+
+    private func performRescan(_ id: Int64, firstScan: Bool) async {
         guard let root = state(id)?.url else { return }
         let rules = showIgnored ? IgnoreRules.none : IgnoreRules.load(root: root)
         let result = await Task.detached(priority: .utility) { FolderScanner.scan(root: root, rules: rules) }.value
+        // Removed or reconnected elsewhere while scanning: these results belong to nothing now.
+        guard state(id)?.url == root else { return }
         try? database.replaceDocuments(folderID: id, with: result.files, firstScan: firstScan)
         let branch = GitBranch.current(in: root)
         update(id) { state in
@@ -174,43 +225,77 @@ public final class Library {
         reloadDocuments(id)
     }
 
-    /// Applies file events for one folder. A Markdown file updates its own row. A folder that appeared,
-    /// moved or went away, or a changed .gitignore, rescans the whole folder.
+    /// Test hook: builds events from the disk as it is now, since plain paths carry no flags. A path that exists is a
+    /// folder when the disk says so. A missing path is removed, and counts as a folder when stored documents sit under it.
     func handle(_ paths: [String], in id: Int64) async {
+        let root = state(id)?.url?.path
+        let stored = state(id)?.documents.map(\.relativePath) ?? []
+        let events = paths.map { path in
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            var wasFolder = false
+            if !exists, let root, path.hasPrefix(root + "/") {
+                let prefix = String(path.dropFirst(root.count + 1)) + "/"
+                wasFolder = stored.contains { $0.hasPrefix(prefix) }
+            }
+            return FolderEvent(path: path, isDirectory: isDirectory.boolValue || wasFolder, isRemoved: !exists, isRenamed: false)
+        }
+        await handle(events, in: id)
+    }
+
+    /// Applies one batch of file events for a folder, after any earlier work for it.
+    func handle(_ events: [FolderEvent], in id: Int64) async {
+        await serialized(id) { [weak self] in await self?.apply(events, in: id) }
+    }
+
+    /// A folder event rescans the whole folder unless it is ignored. A Markdown file updates its own row. Other files
+    /// are skipped, except the root .gitignore (rescan) and .git/HEAD (branch). The root itself going away loses access.
+    private func apply(_ events: [FolderEvent], in id: Int64) async {
         guard let root = state(id)?.url else { return }
+        let rootPath = root.path
+        // Checked for every batch, not only one naming the root: removals under a moved root can arrive before the
+        // root's own event, and would delete rows (or a rescan would find nothing) for a folder that only moved.
+        if !FileManager.default.fileExists(atPath: rootPath) {
+            loseAccess(id)
+            return
+        }
         let rules = showIgnored ? IgnoreRules.none : IgnoreRules.load(root: root)
         var files: [String] = []
         var needsRescan = false
-        for path in Set(paths) {
-            guard path.hasPrefix(root.path + "/") else { continue }
-            let relativePath = String(path.dropFirst(root.path.count + 1))
+        var branchChanged = false
+        for event in events {
+            let path = trimmed(event.path)
+            guard path.hasPrefix(rootPath + "/") else { continue }
+            let relativePath = String(path.dropFirst(rootPath.count + 1))
             if relativePath == ".git/HEAD" {
-                let branch = GitBranch.current(in: root)
-                update(id) { $0.branch = branch }
+                branchChanged = true
                 continue
             }
-            if relativePath.hasPrefix(".git/") || rules.containsIgnoredPath(relativePath) { continue }
+            // Before the ignore rules, so a rule like ".*" can't hide the file the rules come from.
             if relativePath == ".gitignore" {
                 needsRescan = true
                 continue
             }
-            let url = root.appending(path: relativePath)
-            if FolderScanner.isMarkdown(url) {
+            if relativePath == ".git" || relativePath.hasPrefix(".git/") || rules.containsIgnoredPath(relativePath) { continue }
+            if event.isDirectory {
+                needsRescan = true
+            } else if FolderScanner.isMarkdown(URL(fileURLWithPath: path)), !files.contains(relativePath) {
                 files.append(relativePath)
-                continue
             }
-            var isDirectory: ObjCBool = false
-            let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
-            if isDirectory.boolValue || (!exists && url.pathExtension.isEmpty) { needsRescan = true }
         }
         if needsRescan {
-            await rescan(id, firstScan: false)
+            await performRescan(id, firstScan: false)
             return
+        }
+        if branchChanged {
+            let branch = GitBranch.current(in: root)
+            update(id) { $0.branch = branch }
         }
         guard !files.isEmpty else { return }
         for relativePath in files {
             let url = root.appending(path: relativePath)
             let file = await Task.detached(priority: .utility) { FolderScanner.summarize(fileURL: url, relativePath: relativePath) }.value
+            guard state(id)?.url == root else { return }
             guard let file else {
                 try? database.deleteDocument(folderID: id, relativePath: relativePath)
                 continue
@@ -221,6 +306,10 @@ public final class Library {
             }
         }
         reloadDocuments(id)
+    }
+
+    private func trimmed(_ path: String) -> String {
+        path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
     }
 
     private func markWriting(_ documentID: Int64) {
@@ -250,6 +339,8 @@ public final class Library {
         let documents = (try? database.documents(folderID: id)) ?? []
         update(id) { $0.documents = documents }
     }
+
+    var watcherCountForTesting: Int { watchers.count }
 
     /// Stops file events without forgetting the folders, so a test can change files as if DotMD were closed.
     func removeFolderWatchersForTesting() {
