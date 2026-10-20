@@ -6,19 +6,19 @@ import SwiftUI
 struct ReaderScreen: View {
     let fileURL: URL?
 
+    @Environment(Library.self) private var library
     @State private var controller = ReaderController()
     @State private var text: String
     @AppStorage("readingOptions") private var options = ReadingOptions()
     @State private var showingReadingOptions = false
 
-    init(file: MarkdownFile, fileURL: URL?) {
+    init(text: String, fileURL: URL?) {
         self.fileURL = fileURL
-        _text = State(initialValue: file.text)
+        _text = State(initialValue: text)
     }
 
     var body: some View {
         ReaderView(controller: controller)
-            .background(WindowTabbing())
             .navigationTitle(fileURL?.lastPathComponent ?? "Untitled")
             .navigationSubtitle(fileURL.map { $0.deletingLastPathComponent().path(percentEncoded: false) } ?? "")
             .toolbar {
@@ -43,6 +43,9 @@ struct ReaderScreen: View {
             .onChange(of: options) { _, newValue in
                 controller.send(.setReadingOptions(newValue))
             }
+            .onChange(of: readState, initial: true) { _, state in
+                markReadIfNeeded(state)
+            }
     }
 
     private var exporter: DocumentExporter {
@@ -56,6 +59,17 @@ struct ReaderScreen: View {
         case .white, .paper: .light
         case .auto: nil
         }
+    }
+
+    /// The file's read state in the library, when it sits in a watched folder.
+    private var readState: ReadState? {
+        fileURL.flatMap { library.document(at: $0)?.readState }
+    }
+
+    /// Reading a file in DotMD marks it read, including after it changes while open.
+    private func markReadIfNeeded(_ state: ReadState?) {
+        guard let state, state != .read, let fileURL, let document = library.document(at: fileURL) else { return }
+        library.markRead(document)
     }
 
     private func start() {
