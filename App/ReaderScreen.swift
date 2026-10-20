@@ -32,14 +32,20 @@ struct ReaderScreen: View {
                     .popover(isPresented: $showingReadingOptions, arrowEdge: .bottom) {
                         ReadingOptionsPopover(options: $options)
                     }
+                    ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
                 }
             }
+            .focusedSceneValue(\.documentExporter, exporter)
             .preferredColorScheme(windowScheme)
             .onAppear(perform: start)
             .task(id: fileURL) { await watch() }
             .onChange(of: options) { _, newValue in
                 controller.send(.setReadingOptions(newValue))
             }
+    }
+
+    private var exporter: DocumentExporter {
+        DocumentExporter(controller: controller, title: fileURL?.lastPathComponent ?? "Untitled", options: options)
     }
 
     /// The window follows the page: Night is dark, White and Paper are light, Auto follows the system.

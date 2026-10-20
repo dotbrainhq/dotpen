@@ -7,5 +7,6 @@ struct DotMDApp: App {
             ReaderScreen(file: configuration.document, fileURL: configuration.fileURL)
                 .frame(minWidth: 560, minHeight: 480)
         }
+        .commands { ExportCommands() }
     }
 }
