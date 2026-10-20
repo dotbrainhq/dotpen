@@ -11,3 +11,4 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - Aa reading options for text size, font, line width and page color. The window follows the page color.
 - Export as PDF (⌘E) and as a self-contained HTML file (⇧⌘E) from the File menu or the share menu. PDF pages are always white, and diagrams switch to match the page.
 - Quick Look preview for Markdown files in Finder, drawn by the same renderer as the app.
+- Opening several files puts them in tabs in one window, whatever the system tab setting is.
