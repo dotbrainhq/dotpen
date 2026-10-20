@@ -84,6 +84,8 @@ struct Cap<Content: View>: View {
         HStack(spacing: 0) {
             content
         }
+        // The system's focus ring lands on the first cap when the window opens; the prototype draws none.
+        .focusEffectDisabled()
         .padding(.horizontal, 3)
         .frame(height: 32)
         .background(onBar ? Palette.glassOnBar : Palette.glass, in: Capsule())
