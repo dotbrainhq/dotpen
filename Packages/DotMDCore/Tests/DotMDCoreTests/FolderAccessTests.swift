@@ -38,21 +38,23 @@ private final class PathLog: Sendable {
 
 private final class WatcherBox: Sendable {
     let watcher = Mutex<FolderWatcher?>(nil)
+    let calls = Mutex<Int>(0)
 }
 
+// The deinit-on-queue path isn't tested directly: dropping the last reference inside onChange can't be made deterministic.
 @Test func watcherCanCancelItselfFromItsCallback() async throws {
     let temp = try TempFolder()
-    let log = PathLog()
     let box = WatcherBox()
-    let watcher = FolderWatcher(url: temp.url) { paths in
-        log.paths.withLock { $0 += paths }
+    let watcher = FolderWatcher(url: temp.url) { _ in
+        box.calls.withLock { $0 += 1 }
         box.watcher.withLock { $0 }?.cancel()
     }
     box.watcher.withLock { $0 = watcher }
     try await Task.sleep(for: .milliseconds(300))
-    try temp.write("notes.md", "# Notes")
+    try temp.write("first.md", "# First")
+    try await Task.sleep(for: .milliseconds(600))
+    try temp.write("second.md", "# Second")
     try await Task.sleep(for: .seconds(1))
-    let path = temp.url.appending(path: "notes.md").path
-    #expect(log.all.filter { $0 == path }.count == 1)
+    #expect(box.calls.withLock { $0 } == 1)
     watcher.cancel()
 }
