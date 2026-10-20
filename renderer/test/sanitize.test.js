@@ -34,6 +34,25 @@ test('math keeps the inline styles KaTeX needs', () => {
   assert.match(html, /style="/);
 });
 
+test('a katex class cannot carry a style attribute', () => {
+  const html = render('<div class="katex" style="position:fixed;inset:0;background:red">cover</div>');
+  assert.doesNotMatch(html, /style=/);
+  assert.match(html, />cover</);
+});
+
+test('a forged math slot stays an empty span', () => {
+  const html = render('<span data-math-slot="anything-0"></span>\n\n$x^2$');
+  assert.match(html, /<span data-math-slot="anything-0"><\/span>/);
+  assert.equal(html.match(/class="katex"/g).length, 1);
+});
+
+test('math renders with KaTeX inline styles and its TeX annotation', () => {
+  const html = render('$x^2$');
+  assert.match(html, /style="/);
+  assert.match(html, /<annotation encoding="application\/x-tex">x\^2<\/annotation>/);
+  assert.doesNotMatch(html, /data-math-slot/);
+});
+
 test('only checkbox inputs survive, and they stay disabled', () => {
   const html = render('<input type="text" value="x"> <input type="checkbox" checked>');
   assert.doesNotMatch(html, /type="text"/);
@@ -44,6 +63,30 @@ test('images load over https only', () => {
   const html = render('<img src="http://example.com/a.png"> <img src="https://example.com/b.png">');
   assert.doesNotMatch(html, /http:\/\//);
   assert.match(html, /<img src="https:\/\/example.com\/b.png">/);
+});
+
+test('image URLs are read the way browsers read them', () => {
+  const html = render('<img src="ht&#9;tp://example.com/a.png"> <img src="HTTP://example.com/b.png">');
+  assert.doesNotMatch(html, /src=/);
+});
+
+test('background attributes are removed', () => {
+  const html = render('<table background="https://example.com/t.png"><tr><td>x</td></tr></table>');
+  assert.doesNotMatch(html, /background/);
+  assert.match(html, /<td>x<\/td>/);
+});
+
+test('srcset needs every candidate to be https', () => {
+  const bad = render('<picture><source srcset="http://example.com/a.png 1x, https://example.com/b.png 2x"><img src="c.png"></picture>');
+  assert.doesNotMatch(bad, /srcset/);
+  const good = render('<picture><source srcset="https://example.com/a.png 1x, https://example.com/b.png 2x"><img src="c.png"></picture>');
+  assert.match(good, /srcset="https:\/\/example.com\/a.png 1x, https:\/\/example.com\/b.png 2x"/);
+});
+
+test('relative and data image sources are kept', () => {
+  const html = render('<img src="images/local.png"> <img src="data:image/png;base64,iVBORw0KGgo=">');
+  assert.match(html, /<img src="images\/local.png">/);
+  assert.match(html, /<img src="data:image\/png;base64,iVBORw0KGgo=">/);
 });
 
 test('details, summary, kbd and sup render', () => {

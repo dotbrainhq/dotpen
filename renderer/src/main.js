@@ -140,7 +140,10 @@ document.addEventListener('click', (event) => {
   event.preventDefault();
   const href = link.getAttribute('href');
   if (href.startsWith('#')) {
-    document.getElementById(decodeURIComponent(href.slice(1)))?.scrollIntoView({ behavior: 'smooth' });
+    const fragment = href.slice(1);
+    let id = fragment;
+    try { id = decodeURIComponent(fragment); } catch { /* malformed escape: use the raw fragment */ }
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
   post({ type: 'linkActivated', href });
@@ -155,7 +158,7 @@ window.DotMD = {
     doc.innerHTML = renderDocument(markdown, sanitize);
     applyPictureTheme(doc);
     // An image whose source was stripped (http) never fires an error, so it gets its placeholder now.
-    for (const img of doc.querySelectorAll('img:not([src])')) {
+    for (const img of doc.querySelectorAll('img:not([src]):not([srcset])')) {
       if (!img.closest('picture')?.querySelector('source[srcset]')) showMissing(img);
     }
     placeDiagrams(doc, oldHeights);

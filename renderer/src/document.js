@@ -15,10 +15,22 @@ export { escapeHtml };
 texmath.rules.dollars.inline.find((rule) => rule.name === 'math_inline').rex =
   /\$((?:[^\s\\$])|(?:[^\s$][^$]*?[^\s\\$]))\$/gy;
 
+// KaTeX output carries inline styles the sanitizer would strip, so it never goes through the sanitizer.
+// The engine hands markdown-it a placeholder, and renderDocument swaps the real markup in afterwards.
+// The nonce is fresh per render, so a document cannot forge a slot.
+let mathNonce = '';
+let mathStore = [];
+const mathEngine = {
+  renderToString(tex, options) {
+    mathStore.push(katex.renderToString(tex, options));
+    return `<span data-math-slot="${mathNonce}-${mathStore.length - 1}"></span>`;
+  },
+};
+
 const md = new MarkdownIt({ html: true, linkify: true, typographer: false })
   .use(taskLists, { enabled: false })
   .use(footnote)
-  .use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { throwOnError: false } })
+  .use(texmath, { engine: mathEngine, delimiters: 'dollars', katexOptions: { throwOnError: false } })
   .use(alerts)
   .use(lineNumbers);
 
@@ -40,5 +52,10 @@ md.renderer.rules.fence = (tokens, idx) => {
 export function renderDocument(src, sanitize) {
   if (typeof sanitize !== 'function') throw new TypeError('renderDocument needs a sanitize function');
   const { body, fields } = splitFrontMatter(src);
-  return sanitize(frontMatterHTML(fields) + md.render(body));
+  mathNonce = globalThis.crypto.randomUUID();
+  mathStore = [];
+  const store = mathStore;
+  const nonce = mathNonce;
+  const clean = sanitize(frontMatterHTML(fields) + md.render(body));
+  return clean.replace(new RegExp(`<span data-math-slot="${nonce}-(\\d+)"></span>`, 'g'), (_, i) => store[Number(i)]);
 }
