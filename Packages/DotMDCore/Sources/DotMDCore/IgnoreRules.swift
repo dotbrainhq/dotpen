@@ -74,10 +74,11 @@ public struct IgnoreRules: Sendable {
             if text.hasPrefix("**/") {
                 text.removeFirst(3)
                 floating = true
+                anchored = false
             }
             if text.hasPrefix("/") {
                 text.removeFirst()
-                anchored = true
+                anchored = !floating
             } else if text.contains("/") && !floating {
                 anchored = true
             }

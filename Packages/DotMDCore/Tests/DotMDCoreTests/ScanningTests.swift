@@ -149,3 +149,10 @@ import Testing
     let result = FolderScanner.scan(root: temp.url, rules: .none)
     #expect(result.files.map(\.relativePath) == ["NOTES.MD"])
 }
+
+@Test func floatingFolderPatternsStayFloating() {
+    let rules = IgnoreRules(gitignore: "**/gen/**\n")
+    #expect(rules.isIgnored("gen", isDirectory: true))
+    #expect(rules.isIgnored("x/gen", isDirectory: true))
+    #expect(rules.containsIgnoredPath("x/gen/a.md"))
+}
