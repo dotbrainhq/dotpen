@@ -6,10 +6,12 @@ import Foundation
 public final class FolderWatcher: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let queue = DispatchQueue(label: "app.dotmd.folder-watcher")
+    private let queueKey = DispatchSpecificKey<Void>()
     private let onChange: @Sendable ([String]) -> ()
 
     public init(url: URL, latency: TimeInterval = 0.15, onChange: @escaping @Sendable ([String]) -> ()) {
         self.onChange = onChange
+        queue.setSpecific(key: queueKey, value: ())
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
@@ -31,14 +33,21 @@ public final class FolderWatcher: @unchecked Sendable {
         FSEventStreamStart(stream)
     }
 
+    /// Safe to call from any thread, including from inside onChange.
     public func cancel() {
-        queue.sync {
-            guard let stream else { return }
-            FSEventStreamStop(stream)
-            FSEventStreamInvalidate(stream)
-            FSEventStreamRelease(stream)
-            self.stream = nil
+        if DispatchQueue.getSpecific(key: queueKey) != nil {
+            stopStream()
+        } else {
+            queue.sync { stopStream() }
         }
+    }
+
+    private func stopStream() {
+        guard let stream else { return }
+        FSEventStreamStop(stream)
+        FSEventStreamInvalidate(stream)
+        FSEventStreamRelease(stream)
+        self.stream = nil
     }
 
     deinit {

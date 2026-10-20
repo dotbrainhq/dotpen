@@ -35,3 +35,24 @@ private final class PathLog: Sendable {
     try await Task.sleep(for: .seconds(1))
     #expect(log.all.contains(temp.url.appending(path: "notes.md").path))
 }
+
+private final class WatcherBox: Sendable {
+    let watcher = Mutex<FolderWatcher?>(nil)
+}
+
+@Test func watcherCanCancelItselfFromItsCallback() async throws {
+    let temp = try TempFolder()
+    let log = PathLog()
+    let box = WatcherBox()
+    let watcher = FolderWatcher(url: temp.url) { paths in
+        log.paths.withLock { $0 += paths }
+        box.watcher.withLock { $0 }?.cancel()
+    }
+    box.watcher.withLock { $0 = watcher }
+    try await Task.sleep(for: .milliseconds(300))
+    try temp.write("notes.md", "# Notes")
+    try await Task.sleep(for: .seconds(1))
+    let path = temp.url.appending(path: "notes.md").path
+    #expect(log.all.filter { $0 == path }.count == 1)
+    watcher.cancel()
+}
