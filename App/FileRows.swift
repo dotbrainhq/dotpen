@@ -51,6 +51,20 @@ struct FileRow: View {
     private var isWriting: Bool { library.writing.contains(document.key) }
 
     var body: some View {
+        draggable(content)
+            .contextMenu { FileMenu(document: document) }
+    }
+
+    /// Drag the file out to Finder or another app, when the library has its location.
+    @ViewBuilder private func draggable(_ content: some View) -> some View {
+        if let url = library.url(for: document) {
+            content.draggable(url)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: 6) {
             Image(systemName: document.kind.symbolName)
                 .foregroundStyle(.secondary)
@@ -100,5 +114,28 @@ struct FileRow: View {
         case .new: return "New"
         case .changed: return "Changed since you read it"
         }
+    }
+}
+
+/// "Hiding node_modules, build and 12 more." at the end of a folder, with a way to show them.
+struct IgnoredNote: View {
+    @Environment(Library.self) private var library
+    let ignored: [String]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(library.showIgnored ? "Showing ignored paths." : summary)
+            Button(library.showIgnored ? "Hide" : "Show") { library.showIgnored.toggle() }
+                .buttonStyle(.link)
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+    }
+
+    private var summary: String {
+        let names = ignored.prefix(2).map { ($0 as NSString).lastPathComponent }
+        let rest = ignored.count - names.count
+        let list = names.joined(separator: ", ")
+        return rest > 0 ? "Hiding \(list) and \(rest) more." : "Hiding \(list)."
     }
 }

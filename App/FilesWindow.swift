@@ -14,6 +14,12 @@ struct FilesWindow: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columns) {
             FileList(selection: $selection, sort: sort, showTitles: showTitles, filter: filter)
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    ListHeader(sort: $sort, showTitles: $showTitles)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    FilterBar(filter: $filter, addFolder: addFolder)
+                }
                 .navigationSplitViewColumnWidth(min: 220, ideal: 270, max: 420)
         } detail: {
             detail
@@ -50,16 +56,7 @@ struct FilesWindow: View {
 
     private func addFolder() {
         guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
-        Task {
-            do {
-                try await library.addFolder(url)
-            } catch {
-                let alert = NSAlert()
-                alert.messageText = "DotMD couldn't watch this folder"
-                alert.informativeText = error.localizedDescription
-                alert.runModal()
-            }
-        }
+        FileActions.watch(url, in: library)
     }
 }
 

@@ -17,6 +17,7 @@ struct FileList: View {
                     sort: sort,
                     showTitles: showTitles,
                     filter: filter,
+                    showIgnored: library.showIgnored,
                     collapsed: collapsedKeys(in: folder),
                     setExpanded: setExpanded
                 )
@@ -24,6 +25,11 @@ struct FileList: View {
             }
         }
         .listStyle(.sidebar)
+        .dropDestination(for: URL.self) { urls, _ in
+            let folders = urls.filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true }
+            for url in folders { FileActions.watch(url, in: library) }
+            return !folders.isEmpty
+        }
     }
 
     /// Only this folder's keys, so another folder's toggle leaves this section unchanged.
@@ -44,12 +50,13 @@ struct FolderSection: View, Equatable {
     let sort: FileSortOrder
     let showTitles: Bool
     let filter: FileFilter
+    let showIgnored: Bool
     let collapsed: Set<String>
     let setExpanded: (String, Bool) -> Void
 
     nonisolated static func == (lhs: FolderSection, rhs: FolderSection) -> Bool {
         lhs.folder == rhs.folder && lhs.sort == rhs.sort && lhs.showTitles == rhs.showTitles
-            && lhs.filter == rhs.filter && lhs.collapsed == rhs.collapsed
+            && lhs.filter == rhs.filter && lhs.showIgnored == rhs.showIgnored && lhs.collapsed == rhs.collapsed
     }
 
     var body: some View {
@@ -75,8 +82,12 @@ struct FolderSection: View, Equatable {
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
+                if !folder.ignored.isEmpty || showIgnored {
+                    IgnoredNote(ignored: folder.ignored)
+                }
             } label: {
                 FolderRow(folder: folder)
+                    .contextMenu { FolderMenu(folder: folder) }
             }
         }
     }
