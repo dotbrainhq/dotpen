@@ -21,7 +21,19 @@ struct DotMDApp: App {
         .windowStyle(.hiddenTitleBar)
         .commands {
             FilesCommands()
+            SettingsCommands()
         }
+
+        // A plain window rather than the Settings scene, which keeps a title bar the prototype doesn't have.
+        Window("Settings", id: "settings") {
+            SettingsView()
+                .environment(library)
+                .task { await library.start() }
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .restorationBehavior(.disabled)
 
         DocumentGroup(viewing: MarkdownFile.self) { configuration in
             ReaderScreen(text: configuration.document.text, fileURL: configuration.fileURL)

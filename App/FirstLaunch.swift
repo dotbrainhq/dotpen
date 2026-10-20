@@ -297,55 +297,6 @@ private struct FoundRowToggleStyle: ToggleStyle {
     }
 }
 
-/// The prototype's `.sw`: a 28 by 16 point track with a 12 point knob.
-private struct SwitchMark: View {
-    let isOn: Bool
-
-    var body: some View {
-        Capsule()
-            .fill(isOn ? Palette.accent : Palette.fill2)
-            .frame(width: 28, height: 16)
-            .overlay(alignment: .leading) {
-                Circle()
-                    .fill(.white)
-                    .frame(width: 12, height: 12)
-                    .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
-                    .offset(x: isOn ? 14 : 2)
-            }
-            .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.14), value: isOn)
-    }
-}
-
-/// The prototype's `.btn`: 30 points tall on a soft fill, or DotMD's green for the main action.
-struct FormButtonStyle: ButtonStyle {
-    var primary = false
-
-    func makeBody(configuration: Configuration) -> some View {
-        FormButtonBody(label: configuration.label, primary: primary, pressed: configuration.isPressed)
-    }
-}
-
-private struct FormButtonBody<Label: View>: View {
-    let label: Label
-    let primary: Bool
-    let pressed: Bool
-    @Environment(\.isEnabled) private var isEnabled
-    @State private var hovering = false
-
-    var body: some View {
-        label
-            .font(.system(size: 13, weight: primary ? .semibold : .medium))
-            .foregroundStyle(primary ? Palette.onAccent : Palette.ink)
-            .lineLimit(1)
-            .padding(.horizontal, 14)
-            .frame(height: 30)
-            .background(primary ? Palette.accent : hovering ? Palette.fill2 : Palette.fill, in: RoundedRectangle(cornerRadius: 8))
-            .contentShape(RoundedRectangle(cornerRadius: 8))
-            .opacity(isEnabled ? (pressed ? 0.8 : 1) : 0.45)
-            .onHover { hovering = $0 }
-    }
-}
-
 /// The prototype's `.note`: a quiet text action at the start of the button row.
 private struct NoteButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
