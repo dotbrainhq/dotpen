@@ -9,6 +9,7 @@ struct ReaderScreen: View {
     @State private var controller = ReaderController()
     @State private var text: String
     @AppStorage("readingOptions") private var options = ReadingOptions()
+    @State private var showingReadingOptions = false
 
     init(file: MarkdownFile, fileURL: URL?) {
         self.fileURL = fileURL
@@ -19,11 +20,35 @@ struct ReaderScreen: View {
         ReaderView(controller: controller)
             .navigationTitle(fileURL?.lastPathComponent ?? "Untitled")
             .navigationSubtitle(fileURL.map { $0.deletingLastPathComponent().path(percentEncoded: false) } ?? "")
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        showingReadingOptions.toggle()
+                    } label: {
+                        Text("Aa").font(.system(size: 13, weight: .semibold, design: .serif))
+                    }
+                    .help("Text size, font and width")
+                    .accessibilityLabel("Reading options")
+                    .popover(isPresented: $showingReadingOptions, arrowEdge: .bottom) {
+                        ReadingOptionsPopover(options: $options)
+                    }
+                }
+            }
+            .preferredColorScheme(windowScheme)
             .onAppear(perform: start)
             .task(id: fileURL) { await watch() }
             .onChange(of: options) { _, newValue in
                 controller.send(.setReadingOptions(newValue))
             }
+    }
+
+    /// The window follows the page: Night is dark, White and Paper are light, Auto follows the system.
+    private var windowScheme: ColorScheme? {
+        switch options.paper {
+        case .night: .dark
+        case .white, .paper: .light
+        case .auto: nil
+        }
     }
 
     private func start() {
