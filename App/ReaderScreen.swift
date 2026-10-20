@@ -20,9 +20,12 @@ struct ReaderScreen: View {
 
     var body: some View {
         ReaderView(controller: controller)
-            .navigationTitle(fileURL?.lastPathComponent ?? "Untitled")
-            .navigationSubtitle(fileURL.map { $0.deletingLastPathComponent().path(percentEncoded: false) } ?? "")
+            // The plain title still names the window in the Window menu and Mission Control; the toolbar shows
+            // the centered title block instead.
+            .navigationTitle(displayTitle)
+            .toolbar(removing: .title)
             .toolbar {
+                titleItem
                 ToolbarItemGroup(placement: .primaryAction) {
                     Button {
                         showingReadingOptions.toggle()
@@ -50,6 +53,39 @@ struct ReaderScreen: View {
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
             }
+    }
+
+    /// The prototype's `.ttl`: the document title over its path, centered. On macOS 26 the item sits on the
+    /// toolbar itself rather than on a glass capsule.
+    @ToolbarContentBuilder private var titleItem: some ToolbarContent {
+        if #available(macOS 26, *) {
+            ToolbarItem(placement: .principal) {
+                TitleBlock(title: displayTitle, path: displayPath)
+            }
+            .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .principal) {
+                TitleBlock(title: displayTitle, path: displayPath)
+            }
+        }
+    }
+
+    private var libraryDocument: DotMDCore.Document? {
+        documentKey.flatMap { library.document(key: $0) }
+    }
+
+    /// The document's own title, else its file name.
+    private var displayTitle: String {
+        libraryDocument?.title ?? fileURL?.lastPathComponent ?? "Untitled"
+    }
+
+    /// "api-gateway/docs/plans/rate-limiter.md" for a library file; the parent folder and file name otherwise.
+    private var displayPath: String {
+        if let document = libraryDocument, let folder = library.folders.first(where: { $0.id == document.folderID }) {
+            return folder.folder.name + "/" + document.relativePath
+        }
+        guard let fileURL else { return "" }
+        return fileURL.deletingLastPathComponent().lastPathComponent + "/" + fileURL.lastPathComponent
     }
 
     private var exporter: DocumentExporter {
@@ -131,5 +167,28 @@ struct ReaderScreen: View {
         default:
             break
         }
+    }
+}
+
+/// Two centered lines: the title at 13 points semibold, the path at 11 points monospaced. Both truncate in the middle.
+private struct TitleBlock: View {
+    let title: String
+    let path: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Palette.ink)
+            if !path.isEmpty {
+                Text(path)
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(Palette.ink4)
+            }
+        }
+        .lineLimit(1)
+        .truncationMode(.middle)
+        .frame(maxWidth: 480)
+        .accessibilityElement(children: .combine)
     }
 }
