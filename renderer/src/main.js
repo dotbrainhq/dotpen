@@ -1,5 +1,6 @@
 import { renderDocument, escapeHtml } from './document.js';
 import { createSanitizer } from './sanitize.js';
+import { rewriteLocalImages } from './assets.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -156,6 +157,7 @@ window.DotMD = {
     const y = window.scrollY;
     const oldHeights = [...doc.querySelectorAll('figure.mermaid-block')].map((figure) => figure.offsetHeight);
     doc.innerHTML = renderDocument(markdown, sanitize);
+    rewriteLocalImages(doc);
     applyPictureTheme(doc);
     // An image whose source was stripped (http) never fires an error, so it gets its placeholder now.
     for (const img of doc.querySelectorAll('img:not([src]):not([srcset])')) {

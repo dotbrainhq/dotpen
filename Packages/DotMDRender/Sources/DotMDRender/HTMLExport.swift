@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 /// Builds a single HTML file with styles, diagrams (already SVG) and math fonts built in, so it works offline.
 public enum HTMLExport {
@@ -34,9 +35,24 @@ public enum HTMLExport {
         return result
     }
 
+    /// Swaps dotmd-asset image URLs for data URIs, so the exported file shows them offline.
+    public static func inlineLocalImages(in html: String, documentDirectory: URL?, root: URL?) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"dotmd-asset://(?:doc|root)/[^"'\s,)]+"#) else { return html }
+        var result = html
+        for match in regex.matches(in: html, range: NSRange(html.startIndex..., in: html)).reversed() {
+            guard let range = Range(match.range, in: result),
+                  let url = URL(string: String(result[range])),
+                  let file = LocalAssetHandler.resolve(url, documentDirectory: documentDirectory, root: root),
+                  let data = try? Data(contentsOf: file) else { continue }
+            result.replaceSubrange(range, with: "data:\(LocalAssetHandler.mimeType(for: file));base64,\(data.base64EncodedString())")
+        }
+        return result
+    }
+
     @MainActor
     public static func write(from controller: ReaderController, title: String, options: ReadingOptions, to url: URL) async throws {
-        let body = try await controller.exportBodyHTML()
+        let location = controller.assetLocation
+        let body = inlineLocalImages(in: try await controller.exportBodyHTML(), documentDirectory: location.documentDirectory, root: location.root)
         let css = try String(contentsOf: RendererResources.stylesheet, encoding: .utf8)
         let html = document(bodyHTML: body, title: title, options: options, stylesheet: inlineFonts(in: css, fontsDirectory: RendererResources.fontsDirectory))
         try html.write(to: url, atomically: true, encoding: .utf8)

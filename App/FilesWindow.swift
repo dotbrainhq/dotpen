@@ -89,7 +89,7 @@ struct FilesWindow: View {
 
     @ViewBuilder private var detail: some View {
         if let document = selectedDocument {
-            LibraryReader(document: document)
+            LibraryReader(document: document, openDocument: openDocument)
                 .id(document.key)
         } else {
             VStack(spacing: 0) {
@@ -106,6 +106,15 @@ struct FilesWindow: View {
     private func toggleFiles() {
         withAnimation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.35, dampingFraction: 0.9)) {
             sidebarVisible.toggle()
+        }
+    }
+
+    /// A relative link selects its file in the list when it's in a watched folder, and opens a window otherwise.
+    private func openDocument(_ url: URL) {
+        if let document = library.document(at: url) {
+            selection = document.key
+        } else {
+            FileActions.openInNewWindow(url)
         }
     }
 

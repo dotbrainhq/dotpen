@@ -5,6 +5,8 @@ import SwiftUI
 
 struct ReaderScreen: View {
     let fileURL: URL?
+    /// Opens a relative .md link. Without one, the link opens in a new window.
+    let onOpenDocument: ((URL) -> ())?
 
     @Environment(Library.self) private var library
     @State private var controller = ReaderController()
@@ -13,8 +15,9 @@ struct ReaderScreen: View {
     @State private var showingReadingOptions = false
     @State private var documentKey: Int64?
 
-    init(text: String, fileURL: URL?) {
+    init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
         self.fileURL = fileURL
+        self.onOpenDocument = onOpenDocument
         _text = State(initialValue: text)
     }
 
@@ -33,6 +36,11 @@ struct ReaderScreen: View {
             }
             .onChange(of: folderSignature, initial: true) { _, _ in
                 resolveDocument()
+            }
+            .onChange(of: assetRoot) { _, root in
+                // A window opened before the library loaded starts with the file's own folder as its image root.
+                controller.setDocumentLocation(fileURL, root: root)
+                controller.send(.render(markdown: text, options: options))
             }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
@@ -158,8 +166,14 @@ struct ReaderScreen: View {
         library.markRead(document)
     }
 
+    /// The watched folder holding this file: relative images may come from anywhere inside it.
+    private var assetRoot: URL? {
+        fileURL.flatMap { library.folder(containing: $0)?.url }
+    }
+
     private func start() {
         controller.onMessage = handle
+        controller.setDocumentLocation(fileURL, root: assetRoot)
         controller.send(.render(markdown: text, options: options))
     }
 
@@ -189,6 +203,10 @@ struct ReaderScreen: View {
     private func handle(_ message: ReaderMessage) {
         switch message {
         case let .linkActivated(href):
+            if let local = localMarkdownURL(href) {
+                if let onOpenDocument { onOpenDocument(local) } else { FileActions.openInNewWindow(local) }
+                return
+            }
             guard let url = URL(string: href), let scheme = url.scheme?.lowercased(),
                   ["http", "https", "mailto"].contains(scheme) else { return }
             NSWorkspace.shared.open(url)
@@ -198,5 +216,17 @@ struct ReaderScreen: View {
         default:
             break
         }
+    }
+
+    /// A link like "../specs/api.md" or "/docs/plan.md#steps", resolved against this file. Nil for anything else.
+    private func localMarkdownURL(_ href: String) -> URL? {
+        guard let fileURL, URL(string: href)?.scheme == nil else { return nil }
+        let raw = String(href.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
+        let path = raw.removingPercentEncoding ?? raw
+        guard ["md", "markdown", "mdown"].contains((path as NSString).pathExtension.lowercased()) else { return nil }
+        let base = path.hasPrefix("/")
+            ? (assetRoot ?? fileURL.deletingLastPathComponent())
+            : fileURL.deletingLastPathComponent()
+        return base.appending(path: String(path.drop { $0 == "/" })).standardizedFileURL
     }
 }

@@ -5,6 +5,7 @@ import SwiftUI
 struct LibraryReader: View {
     @Environment(Library.self) private var library
     let document: DotMDCore.Document
+    let openDocument: (URL) -> ()
     @State private var text: String?
     @State private var failed = false
     @State private var attempt = 0
@@ -13,7 +14,7 @@ struct LibraryReader: View {
         let url = library.url(for: document)
         Group {
             if let text, let url {
-                ReaderScreen(text: text, fileURL: url)
+                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument)
             } else if failed {
                 ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
             } else {
