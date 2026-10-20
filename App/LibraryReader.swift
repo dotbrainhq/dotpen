@@ -7,6 +7,7 @@ struct LibraryReader: View {
     let document: DotMDCore.Document
     @State private var text: String?
     @State private var failed = false
+    @State private var attempt = 0
 
     var body: some View {
         let url = library.url(for: document)
@@ -19,15 +20,19 @@ struct LibraryReader: View {
                 Color.clear
             }
         }
-        .task(id: LoadKey(url: url, contentHash: document.contentHash)) { await load(url) }
+        .task(id: LoadKey(url: url, attempt: attempt)) { await load(url) }
+        .onChange(of: document.contentHash) {
+            // A content change reloads through the reader's own watcher; only a failed load needs another try.
+            if failed { attempt += 1 }
+        }
     }
 
     private struct LoadKey: Equatable {
         let url: URL?
-        let contentHash: String
+        let attempt: Int
     }
 
-    /// Reads off the main actor. A new URL or content hash starts a fresh attempt.
+    /// Reads off the main actor. A new URL, or a content change after a failure, starts a fresh attempt.
     private func load(_ url: URL?) async {
         guard let url else {
             failed = true
@@ -35,6 +40,7 @@ struct LibraryReader: View {
         }
         failed = false
         let data = await Task.detached { try? Data(contentsOf: url) }.value
+        guard !Task.isCancelled else { return }
         guard let data else {
             failed = true
             return

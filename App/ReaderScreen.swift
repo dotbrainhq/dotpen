@@ -75,8 +75,12 @@ struct ReaderScreen: View {
         library.folders.map { "\($0.id) \($0.url?.path ?? "") \($0.documents.count)" }
     }
 
-    /// Matches the file to a library document by path, the costly step. Runs only while the key is unknown.
+    /// Matches the file to a library document by path, the costly step. Runs only while the key is unknown or stale.
     private func resolveDocument() {
+        if let documentKey, library.document(key: documentKey) == nil {
+            // The row was deleted or recreated under a new key.
+            self.documentKey = nil
+        }
         guard documentKey == nil, let fileURL, let document = library.document(at: fileURL) else { return }
         documentKey = document.key
     }
@@ -102,12 +106,13 @@ struct ReaderScreen: View {
             continuation.finish()
         }
         for await _ in changes {
-            reload(from: fileURL)
+            await reload(from: fileURL)
         }
     }
 
-    private func reload(from url: URL) {
-        guard let data = try? Data(contentsOf: url) else { return }
+    private func reload(from url: URL) async {
+        let data = await Task.detached { try? Data(contentsOf: url) }.value
+        guard let data, !Task.isCancelled else { return }
         let newText = String(decoding: data, as: UTF8.self)
         guard newText != text else { return }
         text = newText
