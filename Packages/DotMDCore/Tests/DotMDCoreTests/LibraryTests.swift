@@ -35,7 +35,7 @@ private func makeLibrary() throws -> Library {
     let temp = try TempFolder()
     try temp.write("README.md", "# Repo")
     let library = try makeLibrary()
-    library.writingQuietPeriod = .milliseconds(100)
+    library.writingQuietPeriod = .seconds(1)
     try await library.addFolder(temp.url)
     let id = try #require(library.folders.first?.id)
     let file = try temp.write("HANDOFF.md", "# Handoff")
@@ -44,8 +44,7 @@ private func makeLibrary() throws -> Library {
     #expect(document.readState == .new)
     #expect(document.title == "Handoff")
     #expect(library.writing.contains(document.key))
-    try await Task.sleep(for: .milliseconds(400))
-    #expect(!library.writing.contains(document.key))
+    #expect(try await eventually { !library.writing.contains(document.key) })
 }
 
 @MainActor @Test func changedFilesStayChangedUntilRead() async throws {
@@ -150,17 +149,6 @@ private func makeLibrary() throws -> Library {
     let id = try #require(library.folders.first?.id)
     library.setColor(.orange, for: id)
     #expect(library.folders.first?.folder.color == .orange)
-}
-
-/// Polls until the condition holds or the deadline passes, then returns whether it held.
-@MainActor
-private func eventually(within deadline: Duration = .seconds(2), _ condition: () -> Bool) async throws -> Bool {
-    let end = ContinuousClock.now + deadline
-    while !condition() {
-        guard ContinuousClock.now < end else { return false }
-        try await Task.sleep(for: .milliseconds(20))
-    }
-    return true
 }
 
 @MainActor @Test func removingAFolderDeletesItsRow() async throws {

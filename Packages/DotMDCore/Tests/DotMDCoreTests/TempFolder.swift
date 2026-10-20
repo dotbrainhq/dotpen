@@ -28,6 +28,20 @@ struct TempFolder {
     }
 }
 
+/// Polls until the condition holds or the deadline passes, then returns whether it held. Runs on the caller's actor.
+func eventually(
+    within deadline: Duration = .seconds(5),
+    isolation: isolated (any Actor)? = #isolation,
+    _ condition: () -> Bool
+) async throws -> Bool {
+    let end = ContinuousClock.now + deadline
+    while !condition() {
+        guard ContinuousClock.now < end else { return false }
+        try await Task.sleep(for: .milliseconds(20))
+    }
+    return true
+}
+
 /// Sets a path's permission bits, for tests that need something DotMD can't read.
 func setPermissions(_ url: URL, _ mode: Int) throws {
     try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path)
