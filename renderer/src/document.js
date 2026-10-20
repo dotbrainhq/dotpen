@@ -15,7 +15,7 @@ export { escapeHtml };
 texmath.rules.dollars.inline.find((rule) => rule.name === 'math_inline').rex =
   /\$((?:[^\s\\$])|(?:[^\s$][^$]*?[^\s\\$]))\$/gy;
 
-const md = new MarkdownIt({ html: false, linkify: true, typographer: false })
+const md = new MarkdownIt({ html: true, linkify: true, typographer: false })
   .use(taskLists, { enabled: false })
   .use(footnote)
   .use(texmath, { engine: katex, delimiters: 'dollars', katexOptions: { throwOnError: false } })
@@ -36,7 +36,9 @@ md.renderer.rules.fence = (tokens, idx) => {
   return `<figure class="code-block"${lines}>${label}<pre><code class="hljs">${body}</code></pre></figure>\n`;
 };
 
-export function renderDocument(src) {
+/** Renders Markdown to HTML. Raw HTML is allowed in the source, so the caller must pass a sanitizer. */
+export function renderDocument(src, sanitize) {
+  if (typeof sanitize !== 'function') throw new TypeError('renderDocument needs a sanitize function');
   const { body, fields } = splitFrontMatter(src);
-  return frontMatterHTML(fields) + md.render(body);
+  return sanitize(frontMatterHTML(fields) + md.render(body));
 }
