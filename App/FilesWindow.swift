@@ -13,14 +13,14 @@ struct FilesWindow: View {
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columns) {
-            FileList(selection: $selection, sort: sort, showTitles: showTitles, filter: filter)
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    ListHeader(sort: $sort, showTitles: $showTitles)
-                }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    FilterBar(filter: $filter, addFolder: addFolder)
-                }
-                .navigationSplitViewColumnWidth(min: 220, ideal: 270, max: 420)
+            // A stack rather than safe-area insets, so rows never scroll under the header or the filter bar.
+            VStack(spacing: 0) {
+                ListHeader(sort: $sort, showTitles: $showTitles)
+                FileList(selection: $selection, sort: sort, showTitles: showTitles, filter: filter)
+                    .frame(maxHeight: .infinity)
+                FilterBar(filter: $filter, addFolder: addFolder)
+            }
+            .navigationSplitViewColumnWidth(min: 220, ideal: 272, max: 420)
         } detail: {
             detail
         }

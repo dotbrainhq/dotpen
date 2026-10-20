@@ -1,17 +1,17 @@
 import DotMDCore
 import SwiftUI
 
-/// "Folders" with the sort menu, above the list.
+/// "Folders" with the sort menu, above the outline. The prototype's `.side-head`.
 struct ListHeader: View {
     @Binding var sort: FileSortOrder
     @Binding var showTitles: Bool
 
     var body: some View {
-        HStack {
+        HStack(spacing: 0) {
             Text("Folders")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
+                .foregroundStyle(Palette.ink4)
+            Spacer(minLength: 8)
             Menu {
                 Picker("Sort by", selection: $sort) {
                     Text("Last changed").tag(FileSortOrder.lastChanged)
@@ -21,49 +21,134 @@ struct ListHeader: View {
                 Divider()
                 Toggle("Show titles", isOn: $showTitles)
             } label: {
-                Text(sort == .lastChanged ? "Last changed" : "Name")
-                    .font(.system(size: 11, weight: .medium))
+                HStack(spacing: 3) {
+                    Text(sort == .lastChanged ? "Last changed" : "Name")
+                        .font(.system(size: 11, weight: .medium))
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .medium))
+                }
+                .foregroundStyle(Palette.ink3)
+                .padding(.vertical, 2)
+                .padding(.horizontal, 4)
             }
-            .menuStyle(.borderlessButton)
+            .menuStyle(.button)
+            .buttonStyle(SidebarButtonStyle(cornerRadius: 5))
+            .menuIndicator(.hidden)
             .fixedSize()
             .help("Sort order and names")
+            .accessibilityLabel("Sort by")
+            .accessibilityValue(sort == .lastChanged ? "Last changed" : "Name")
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 4)
-        .padding(.bottom, 2)
+        .padding(.top, 2)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
+        .padding(.horizontal, 8)
     }
 }
 
-/// Watch a folder, filter text, and the unread and changed toggles, below the list.
+/// Watch a folder, filter text, and the unread and changed toggles, pinned below the outline. The prototype's `.fbar`.
 struct FilterBar: View {
     @Binding var filter: FileFilter
     let addFolder: () -> ()
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Button(action: addFolder) {
                 Image(systemName: "plus")
+                    .font(.system(size: 13))
+                    .frame(width: 26, height: 26)
             }
+            .buttonStyle(SidebarButtonStyle(cornerRadius: 7))
             .help("Watch a folder")
             .accessibilityLabel("Watch a folder")
-            TextField("Filter", text: $filter.query)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
+            FilterField(query: $filter.query)
             Toggle(isOn: $filter.unreadOnly) {
-                Image(systemName: "circle.fill").imageScale(.small)
+                Image(systemName: "circle.fill")
+                    .font(.system(size: 13))
+                    .imageScale(.small)
             }
             .help("Show only unread files")
             .accessibilityLabel("Unread only")
             Toggle(isOn: $filter.changedOnly) {
-                Image(systemName: "arrow.triangle.2.circlepath").imageScale(.small)
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 13))
             }
             .help("Show only files that changed since you read them")
             .accessibilityLabel("Changed only")
         }
-        .toggleStyle(.button)
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .overlay(alignment: .top) { Divider() }
+        .toggleStyle(FilterToggleStyle())
+        .padding(.top, 8)
+        .padding(.horizontal, 2)
+        .overlay(alignment: .top) {
+            Palette.line.frame(height: 0.5)
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+    }
+}
+
+/// The filter text field: a rounded fill with a magnifying glass, no border.
+private struct FilterField: View {
+    @Binding var query: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13))
+                .foregroundStyle(Palette.ink4)
+                .accessibilityHidden(true)
+            TextField("Filter", text: $query, prompt: Text("Filter").foregroundStyle(Palette.ink4))
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(Palette.ink)
+        }
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: 26, maxHeight: 26)
+        .background(Palette.fill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+    }
+}
+
+/// A borderless sidebar button: ink-3 content and a soft fill under the pointer.
+struct SidebarButtonStyle: ButtonStyle {
+    let cornerRadius: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        HoverFill(cornerRadius: cornerRadius, isOn: false) {
+            configuration.label
+        }
+        .opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
+/// A filter toggle: like the add button, and drawn in DotMD's green on the selection wash while on.
+struct FilterToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn.toggle()
+        } label: {
+            HoverFill(cornerRadius: 7, isOn: configuration.isOn) {
+                configuration.label
+                    .frame(width: 26, height: 26)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(configuration.isOn ? .isSelected : [])
+        .accessibilityValue(configuration.isOn ? "On" : "Off")
+    }
+}
+
+private struct HoverFill<Label: View>: View {
+    let cornerRadius: CGFloat
+    let isOn: Bool
+    @ViewBuilder let label: Label
+    @State private var hovering = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        label
+            .foregroundStyle(isOn ? Palette.accent : Palette.ink3)
+            .background(isOn ? Palette.selection : hovering ? Palette.fill : .clear, in: shape)
+            .contentShape(shape)
+            .onHover { hovering = $0 }
     }
 }
