@@ -9,8 +9,9 @@ struct LibraryReader: View {
     @State private var failed = false
 
     var body: some View {
+        let url = library.url(for: document)
         Group {
-            if let text, let url = library.url(for: document) {
+            if let text, let url {
                 ReaderScreen(text: text, fileURL: url)
             } else if failed {
                 ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
@@ -18,11 +19,23 @@ struct LibraryReader: View {
                 Color.clear
             }
         }
-        .task { load() }
+        .task(id: LoadKey(url: url, contentHash: document.contentHash)) { await load(url) }
     }
 
-    private func load() {
-        guard let url = library.url(for: document), let data = try? Data(contentsOf: url) else {
+    private struct LoadKey: Equatable {
+        let url: URL?
+        let contentHash: String
+    }
+
+    /// Reads off the main actor. A new URL or content hash starts a fresh attempt.
+    private func load(_ url: URL?) async {
+        guard let url else {
+            failed = true
+            return
+        }
+        failed = false
+        let data = await Task.detached { try? Data(contentsOf: url) }.value
+        guard let data else {
             failed = true
             return
         }

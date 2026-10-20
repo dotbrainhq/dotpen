@@ -11,6 +11,7 @@ struct ReaderScreen: View {
     @State private var text: String
     @AppStorage("readingOptions") private var options = ReadingOptions()
     @State private var showingReadingOptions = false
+    @State private var documentKey: Int64?
 
     init(text: String, fileURL: URL?) {
         self.fileURL = fileURL
@@ -43,6 +44,9 @@ struct ReaderScreen: View {
             .onChange(of: options) { _, newValue in
                 controller.send(.setReadingOptions(newValue))
             }
+            .onChange(of: folderSignature, initial: true) { _, _ in
+                resolveDocument()
+            }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
             }
@@ -61,14 +65,25 @@ struct ReaderScreen: View {
         }
     }
 
-    /// The file's read state in the library, when it sits in a watched folder.
+    /// The file's read state in the library, found by the cached key once the file has been matched.
     private var readState: ReadState? {
-        fileURL.flatMap { library.document(at: $0)?.readState }
+        documentKey.flatMap { library.document(key: $0)?.readState }
+    }
+
+    /// What can make an unmatched file match: a folder connecting or its file list growing.
+    private var folderSignature: [String] {
+        library.folders.map { "\($0.id) \($0.url?.path ?? "") \($0.documents.count)" }
+    }
+
+    /// Matches the file to a library document by path, the costly step. Runs only while the key is unknown.
+    private func resolveDocument() {
+        guard documentKey == nil, let fileURL, let document = library.document(at: fileURL) else { return }
+        documentKey = document.key
     }
 
     /// Reading a file in DotMD marks it read, including after it changes while open.
     private func markReadIfNeeded(_ state: ReadState?) {
-        guard let state, state != .read, let fileURL, let document = library.document(at: fileURL) else { return }
+        guard let state, state != .read, let documentKey, let document = library.document(key: documentKey) else { return }
         library.markRead(document)
     }
 
@@ -92,7 +107,9 @@ struct ReaderScreen: View {
     }
 
     private func reload(from url: URL) {
-        guard let newText = try? String(contentsOf: url, encoding: .utf8), newText != text else { return }
+        guard let data = try? Data(contentsOf: url) else { return }
+        let newText = String(decoding: data, as: UTF8.self)
+        guard newText != text else { return }
         text = newText
         controller.send(.render(markdown: newText, options: options))
     }

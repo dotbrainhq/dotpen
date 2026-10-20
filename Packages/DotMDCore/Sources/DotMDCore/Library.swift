@@ -159,6 +159,14 @@ public final class Library {
         return folder.documents.first { $0.relativePath == relativePath }
     }
 
+    /// A document by its key, searched across the watched folders.
+    public func document(key: Int64) -> Document? {
+        for folder in folders {
+            if let match = folder.documents.first(where: { $0.key == key }) { return match }
+        }
+        return nil
+    }
+
     public func markRead(_ document: Document) {
         if let updated = try? database.markRead(documentID: document.key) { put(updated) }
     }

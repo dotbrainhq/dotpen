@@ -45,8 +45,10 @@ struct FolderRow: View {
 struct FileRow: View {
     let document: DotMDCore.Document
     let showTitles: Bool
-    let isWriting: Bool
+    @Environment(Library.self) private var library
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isWriting: Bool { library.writing.contains(document.key) }
 
     var body: some View {
         HStack(spacing: 6) {

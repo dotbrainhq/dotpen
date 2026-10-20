@@ -1,3 +1,4 @@
+import AppKit
 import DotMDCore
 import SwiftUI
 
@@ -49,7 +50,16 @@ struct FilesWindow: View {
 
     private func addFolder() {
         guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
-        Task { try? await library.addFolder(url) }
+        Task {
+            do {
+                try await library.addFolder(url)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "DotMD couldn't watch this folder"
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+            }
+        }
     }
 }
 
