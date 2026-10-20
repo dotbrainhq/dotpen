@@ -31,6 +31,14 @@ private func makeLibrary() throws -> Library {
     #expect(folder.unreadCount == 0)
 }
 
+@MainActor @Test func theLibraryReportsWhenStoredFoldersAreLoaded() async throws {
+    let library = try makeLibrary()
+    #expect(!library.hasLoaded)
+    await library.start()
+    #expect(library.hasLoaded)
+    #expect(library.folders.isEmpty)
+}
+
 @MainActor @Test func addingTheSameFolderTwiceKeepsOne() async throws {
     let temp = try TempFolder()
     let library = try makeLibrary()

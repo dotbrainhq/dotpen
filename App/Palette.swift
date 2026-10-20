@@ -24,6 +24,11 @@ enum Palette {
     /// The document layout's bar, and the caps pre-blended over it.
     static let bar = Color("BarBackground")
     static let glassOnBar = Color("GlassOnBar")
+    /// Raised surfaces, like the list of folders first launch found, with their softer row lines.
+    static let raised = Color("RaisedBackground")
+    static let lineSoft = Color("LineSoft")
+    /// Text on DotMD's green.
+    static let onAccent = Color("OnAccent")
 }
 
 /// One of the prototype's 16 point line icons, drawn at the given size and tinted by the foreground style.
