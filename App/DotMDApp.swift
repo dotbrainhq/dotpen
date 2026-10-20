@@ -9,7 +9,12 @@ struct DotMDApp: App {
         Window("DotMD", id: "files") {
             FilesWindow()
                 .environment(library)
-                .task { await library.start() }
+                .task {
+                    await library.start()
+                    #if DEBUG
+                    await DebugWorkspace.open(in: library)
+                    #endif
+                }
         }
         .commands {
             SidebarCommands()
