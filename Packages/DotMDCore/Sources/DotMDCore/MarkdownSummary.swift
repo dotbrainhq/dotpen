@@ -4,6 +4,7 @@ import Foundation
 public enum MarkdownSummary {
     /// The front matter `title:` field, else the first heading outside code fences.
     public static func title(in text: String) -> String? {
+        let text = text.hasPrefix("\u{FEFF}") ? String(text.dropFirst()) : text
         // Swift treats "\r\n" as one Character, so split on any newline character rather than "\n" alone.
         let lines = text.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline }).map(String.init)
         var index = 0
@@ -30,9 +31,12 @@ public enum MarkdownSummary {
                 previous = ""
                 continue
             }
-            if let heading = atxHeading(trimmed) { return heading }
-            if !previous.isEmpty, !trimmed.isEmpty, trimmed.allSatisfy({ $0 == "=" }) { return clean(previous) }
-            previous = line.hasPrefix("    ") || line.hasPrefix("\t") ? "" : trimmed
+            let isIndentedCode = line.hasPrefix("    ") || line.hasPrefix("\t")
+            if !isIndentedCode, let heading = atxHeading(trimmed) { return heading }
+            if !previous.isEmpty, !trimmed.isEmpty, trimmed.allSatisfy({ $0 == "=" }) || trimmed.allSatisfy({ $0 == "-" }) {
+                return clean(previous)
+            }
+            previous = isIndentedCode ? "" : trimmed
         }
         return nil
     }

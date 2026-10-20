@@ -1,7 +1,7 @@
 import Foundation
 
 extension DocumentKind {
-    static let agentFileNames: Set<String> = ["claude.md", "agents.md", "gemini.md", "copilot-instructions.md"]
+    static let agentFileNames: Set<String> = ["claude.md", "agents.md", "gemini.md", "copilot-instructions.md", "claude.local.md"]
 
     /// Guesses what a document is from its path, the way people name these files.
     public static func detect(relativePath: String) -> DocumentKind {
@@ -9,6 +9,7 @@ extension DocumentKind {
         guard let name = parts.last else { return .other }
         let directories = parts.dropLast()
         let stem = (name as NSString).deletingPathExtension
+        let planWords: Set<String> = ["plan", "plans", "planning"]
         // Whole words only, so "explanation" doesn't count as a plan.
         let words = stem.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
 
@@ -16,14 +17,15 @@ extension DocumentKind {
             return .agentInstructions
         }
         if stem.hasPrefix("readme") { return .readme }
-        if stem.hasPrefix("changelog") || ["changes", "history", "releases", "release-notes"].contains(stem) {
+        if stem.hasPrefix("changelog") || ["changes", "history", "news", "releases", "release-notes"].contains(stem) {
             return .changelog
         }
-        if words.contains(where: { $0.hasPrefix("plan") }) || directories.contains(where: { $0.hasPrefix("plan") }) {
+        if words.contains(where: { planWords.contains($0) }) || directories.contains(where: { planWords.contains($0) }) {
             return .plan
         }
-        let specWords = words.contains { $0.hasPrefix("spec") || $0 == "design" || $0 == "rfc" || $0 == "adr" }
-        let specFolder = directories.contains { $0.hasPrefix("spec") || $0.hasPrefix("rfc") || $0 == "adr" || $0 == "design" }
-        return specWords || specFolder ? .spec : .other
+        let specStemWords: Set<String> = ["spec", "specs", "specification", "specifications", "design", "rfc", "adr"]
+        let specFolders: Set<String> = ["spec", "specs", "specification", "specifications", "rfc", "rfcs", "adr", "adrs", "design", "designs"]
+        let isSpec = words.contains(where: { specStemWords.contains($0) }) || directories.contains(where: { specFolders.contains($0) })
+        return isSpec ? .spec : .other
     }
 }
