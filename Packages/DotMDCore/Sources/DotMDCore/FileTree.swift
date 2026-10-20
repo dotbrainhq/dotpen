@@ -1,6 +1,6 @@
 import Foundation
 
-public enum SortOrder: String, CaseIterable, Sendable {
+public enum FileSortOrder: String, CaseIterable, Sendable {
     case lastChanged, name
 }
 
@@ -28,7 +28,7 @@ public struct FileGroup: Identifiable, Equatable, Sendable {
 public enum FileTree {
     /// One group per subfolder that holds Markdown, sorted by path, then the files at the root.
     /// Pinned files lead each group.
-    public static func groups(for documents: [Document], sort: SortOrder, filter: FileFilter) -> [FileGroup] {
+    public static func groups(for documents: [Document], sort: FileSortOrder, filter: FileFilter) -> [FileGroup] {
         var byDirectory: [String: [Document]] = [:]
         for document in documents where matches(document, filter) {
             byDirectory[document.directory, default: []].append(document)
@@ -41,7 +41,7 @@ public enum FileTree {
         return groups
     }
 
-    static func sorted(_ documents: [Document], by order: SortOrder) -> [Document] {
+    static func sorted(_ documents: [Document], by order: FileSortOrder) -> [Document] {
         documents.sorted { a, b in
             if a.pinned != b.pinned { return a.pinned }
             if order == .lastChanged, a.modifiedAt != b.modifiedAt { return a.modifiedAt > b.modifiedAt }
