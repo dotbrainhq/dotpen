@@ -6,6 +6,7 @@ import WebKit
 public final class ReaderController: NSObject {
     public let webView: WKWebView
     public var onMessage: (ReaderMessage) -> () = { _ in }
+    private let assetHandler: LocalAssetHandler
 
     private var isReady = false
     private var pending: [ReaderCommand] = []
@@ -15,6 +16,9 @@ public final class ReaderController: NSObject {
     public override init() {
         let configuration = WKWebViewConfiguration()
         configuration.suppressesIncrementalRendering = true
+        let assets = LocalAssetHandler()
+        configuration.setURLSchemeHandler(assets, forURLScheme: LocalAssetHandler.scheme)
+        assetHandler = assets
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 800, height: 600), configuration: configuration)
         super.init()
         configuration.userContentController.add(WeakScriptHandler(self), name: "dotmd")
@@ -31,6 +35,17 @@ public final class ReaderController: NSObject {
             return
         }
         webView.evaluateJavaScript(command.javaScript, completionHandler: nil)
+    }
+
+    /// Where relative image paths start, and the folder they may not leave: the watched folder for a library file,
+    /// or the file's own folder for a file opened on its own.
+    public func setDocumentLocation(_ fileURL: URL?, root: URL?) {
+        assetHandler.documentDirectory = fileURL?.deletingLastPathComponent()
+        assetHandler.root = root ?? fileURL?.deletingLastPathComponent()
+    }
+
+    var assetLocation: (documentDirectory: URL?, root: URL?) {
+        (assetHandler.documentDirectory, assetHandler.root)
     }
 
     /// True once every render sent so far has finished, including Mermaid diagrams.
