@@ -88,21 +88,29 @@ struct Cap<Content: View>: View {
         .frame(height: 32)
         .background(onBar ? Palette.glassOnBar : Palette.glass, in: Capsule())
         .overlay(Capsule().strokeBorder(Palette.glassEdge, lineWidth: 0.5))
-        .modifier(CapShadow(dark: colorScheme == .dark))
+        .modifier(ShadowOne(shape: Capsule(), fill: onBar ? Palette.glassOnBar : Palette.glass, dark: colorScheme == .dark))
     }
 }
 
-/// The prototype's `--shadow-1`: two soft one-point drops in light mode, one deeper one in dark mode.
-private struct CapShadow: ViewModifier {
+/// The prototype's `--shadow-1`: two soft one-point drops in light mode, one deeper one in dark mode. Each drop is
+/// cast by its own copy of the shape, as CSS casts each shadow from the box: chained SwiftUI shadows would compound.
+struct ShadowOne<S: Shape>: ViewModifier {
+    let shape: S
+    /// The surface's own color, so the shadow casters never show at its anti-aliased edge.
+    let fill: Color
     let dark: Bool
 
     func body(content: Content) -> some View {
-        if dark {
-            content.shadow(color: .black.opacity(0.3), radius: 1, y: 1)
-        } else {
-            content
-                .shadow(color: .black.opacity(0.06), radius: 0.5, y: 1)
-                .shadow(color: .black.opacity(0.06), radius: 1.5, y: 1)
+        content.background {
+            if dark {
+                shape.fill(fill).shadow(color: .black.opacity(0.3), radius: 1, y: 1)
+            } else {
+                let tint = Color(red: 10 / 255, green: 25 / 255, blue: 26 / 255)
+                ZStack {
+                    shape.fill(fill).shadow(color: tint.opacity(0.06), radius: 0.5, y: 1)
+                    shape.fill(fill).shadow(color: tint.opacity(0.06), radius: 1.5, y: 1)
+                }
+            }
         }
     }
 }

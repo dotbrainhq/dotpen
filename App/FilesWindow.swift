@@ -20,24 +20,37 @@ struct FilesWindow: View {
     static let sidebarWidth: CGFloat = 272
 
     var body: some View {
-        HStack(spacing: 0) {
-            if sidebarVisible {
-                sidebar
-                    .frame(width: Self.sidebarWidth)
-                    .transition(reduceMotion ? .opacity : .move(edge: .leading).combined(with: .opacity))
+        Group {
+            if isFirstLaunch {
+                FirstLaunchView()
+            } else {
+                HStack(spacing: 0) {
+                    if sidebarVisible {
+                        sidebar
+                            .frame(width: Self.sidebarWidth)
+                            .transition(reduceMotion ? .opacity : .move(edge: .leading).combined(with: .opacity))
+                    }
+                    detail
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            detail
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Palette.window)
         .ignoresSafeArea()
         .background {
-            // The prototype puts the window buttons inside the sidebar panel, or in the bar when the list is hidden.
-            WindowButtons(closeCenter: sidebarVisible ? CGPoint(x: 30, y: 30) : CGPoint(x: 22, y: 26))
+            // The prototype puts the window buttons inside the sidebar panel, or in the bar when the list is hidden
+            // and on first launch.
+            WindowButtons(closeCenter: sidebarVisible && !isFirstLaunch ? CGPoint(x: 30, y: 30) : CGPoint(x: 22, y: 26))
         }
         .environment(\.filesChrome, chrome)
         .focusedSceneValue(\.toggleFiles, toggleFiles)
         .frame(minWidth: 760, minHeight: 480)
+    }
+
+    /// No folder watched yet. Until the library has read its stored folders an empty list means nothing, so a
+    /// returning person never sees first launch flash by.
+    private var isFirstLaunch: Bool {
+        library.hasLoaded && library.folders.isEmpty
     }
 
     private var chrome: FilesChrome {
@@ -83,20 +96,8 @@ struct FilesWindow: View {
                 TopBar(chrome: chrome, title: "", path: "") {
                     EmptyView()
                 }
-                Group {
-                    if library.folders.isEmpty {
-                        ContentUnavailableView {
-                            Label("No folders yet", systemImage: "folder.badge.plus")
-                        } description: {
-                            Text("Watch a folder and DotMD lists every Markdown file inside it.")
-                        } actions: {
-                            Button("Watch a folder…", action: addFolder)
-                        }
-                    } else {
-                        ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("DotMD")
         }

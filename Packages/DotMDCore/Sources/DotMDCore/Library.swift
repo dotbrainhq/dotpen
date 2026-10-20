@@ -44,6 +44,8 @@ public struct FolderState: Identifiable, Equatable, Sendable {
 @Observable
 public final class Library {
     public private(set) var folders: [FolderState] = []
+    /// Whether start() has read the stored folders, so an empty list means no folders rather than not loaded yet.
+    public private(set) var hasLoaded = false
     /// Documents being written right now: changed within the last few seconds.
     public private(set) var writing: Set<Int64> = []
     /// Shows paths the ignore rules would hide. Changing it rescans every folder; the newest setting wins.
@@ -85,6 +87,7 @@ public final class Library {
         folders = stored.map { folder in
             FolderState(folder: folder, status: .connecting, documents: (try? database.documents(folderID: folder.id ?? 0)) ?? [])
         }
+        hasLoaded = true
         var ready: [Int64] = []
         for folder in stored where connect(folder) {
             if let id = folder.id { ready.append(id) }
