@@ -16,10 +16,10 @@ struct DotMDApp: App {
                     #endif
                 }
         }
-        // The prototype's window size.
+        // The prototype's window: 1200 by 806, with no title bar over the sidebar panel.
         .defaultSize(width: 1200, height: 806)
+        .windowStyle(.hiddenTitleBar)
         .commands {
-            SidebarCommands()
             FilesCommands()
         }
 

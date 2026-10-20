@@ -38,12 +38,10 @@ struct ListHeader: View {
             .accessibilityLabel("Sort by")
             .accessibilityValue(sort == .lastChanged ? "Last changed" : "Name")
         }
-        // The prototype's 2 and 6, less the 2.5 points the system title bar adds above the sidebar content,
-        // so the header and the first row land where they do in the prototype.
-        .padding(.top, -0.5)
+        .padding(.top, 2)
         .padding(.horizontal, 10)
+        // The prototype's 6, less the same half point.
         .padding(.bottom, 5.5)
-        .padding(.horizontal, 8)
     }
 }
 
@@ -79,8 +77,6 @@ struct FilterBar: View {
         .overlay(alignment: .top) {
             Palette.line.frame(height: 0.5)
         }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
     }
 }
 

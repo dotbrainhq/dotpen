@@ -38,8 +38,6 @@ struct FileList: View {
                     }
                     HiddenPathsNote()
                 }
-                .padding(.horizontal, 8)
-                .padding(.bottom, 8)
                 .focusable(interactions: .edit)
                 .focused($listFocused)
                 .focusEffectDisabled()

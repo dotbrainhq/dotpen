@@ -17,6 +17,13 @@ enum Palette {
     static let sidebar = Color("SideBackground")
     static let sidebarEdge = Color("SideEdge")
     static let window = Color("WindowBackground")
+    static let ink2 = Color("SideInk2")
+    /// The prototype's toolbar caps: white at 80% on the window (pre-blended), with a hairline edge.
+    static let glass = Color("Glass")
+    static let glassEdge = Color("GlassEdge")
+    /// The document layout's bar, and the caps pre-blended over it.
+    static let bar = Color("BarBackground")
+    static let glassOnBar = Color("GlassOnBar")
 }
 
 /// One of the prototype's 16 point line icons, drawn at the given size and tinted by the foreground style.

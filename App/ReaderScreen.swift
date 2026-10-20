@@ -18,28 +18,12 @@ struct ReaderScreen: View {
         _text = State(initialValue: text)
     }
 
+    @Environment(\.filesChrome) private var filesChrome
+
     var body: some View {
-        ReaderView(controller: controller)
-            // The plain title still names the window in the Window menu and Mission Control; the toolbar shows
-            // the centered title block instead.
+        chrome
+            // Names the window in the Window menu and Mission Control.
             .navigationTitle(displayTitle)
-            .toolbar(removing: .title)
-            .toolbar {
-                titleItem
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button {
-                        showingReadingOptions.toggle()
-                    } label: {
-                        Text("Aa").font(.system(size: 13, weight: .semibold, design: .serif))
-                    }
-                    .help("Text size, font and width")
-                    .accessibilityLabel("Reading options")
-                    .popover(isPresented: $showingReadingOptions, arrowEdge: .bottom) {
-                        ReadingOptionsPopover(options: $options)
-                    }
-                    ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
-                }
-            }
             .focusedSceneValue(\.documentExporter, exporter)
             .preferredColorScheme(windowScheme)
             .onAppear(perform: start)
@@ -55,17 +39,64 @@ struct ReaderScreen: View {
             }
     }
 
-    /// The prototype's `.ttl`: the document title over its path, centered. On macOS 26 the item sits on the
-    /// toolbar itself rather than on a glass capsule.
+    /// In the Files window the reader draws the prototype's own bar; a document window keeps the system toolbar.
+    @ViewBuilder private var chrome: some View {
+        if let filesChrome {
+            VStack(spacing: 0) {
+                TopBar(chrome: filesChrome, title: displayTitle, path: displayPath) {
+                    Cap { readingOptionsButton.buttonStyle(CapButtonStyle()) }
+                    Cap {
+                        // The prototype's share button is the icon alone; the label stays for VoiceOver.
+                        ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
+                            .labelStyle(.iconOnly)
+                            .menuStyle(.button)
+                            .buttonStyle(CapButtonStyle())
+                            .fixedSize()
+                    }
+                }
+                ReaderView(controller: controller)
+            }
+        } else {
+            ReaderView(controller: controller)
+                .toolbar(removing: .title)
+                .toolbar {
+                    titleItem
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        readingOptionsButton
+                        ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
+                    }
+                }
+        }
+    }
+
+    private var readingOptionsButton: some View {
+        Button {
+            showingReadingOptions.toggle()
+        } label: {
+            // The prototype's `.aa-btn`: New York at 13 points semibold, tracked slightly tight.
+            Text("Aa")
+                .font(.system(size: 13, weight: .semibold, design: .serif))
+                .tracking(-0.26)
+        }
+        .help("Text size, font and width")
+        .accessibilityLabel("Reading options")
+        .popover(isPresented: $showingReadingOptions, arrowEdge: .bottom) {
+            ReadingOptionsPopover(options: $options)
+        }
+    }
+
+    /// The title block in a document window's toolbar. On macOS 26 it sits on the toolbar rather than a glass capsule.
     @ToolbarContentBuilder private var titleItem: some ToolbarContent {
         if #available(macOS 26, *) {
             ToolbarItem(placement: .principal) {
                 TitleBlock(title: displayTitle, path: displayPath)
+                    .frame(maxWidth: 480)
             }
             .sharedBackgroundVisibility(.hidden)
         } else {
             ToolbarItem(placement: .principal) {
                 TitleBlock(title: displayTitle, path: displayPath)
+                    .frame(maxWidth: 480)
             }
         }
     }
@@ -167,28 +198,5 @@ struct ReaderScreen: View {
         default:
             break
         }
-    }
-}
-
-/// Two centered lines: the title at 13 points semibold, the path at 11 points monospaced. Both truncate in the middle.
-private struct TitleBlock: View {
-    let title: String
-    let path: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Palette.ink)
-            if !path.isEmpty {
-                Text(path)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(Palette.ink4)
-            }
-        }
-        .lineLimit(1)
-        .truncationMode(.middle)
-        .frame(maxWidth: 480)
-        .accessibilityElement(children: .combine)
     }
 }
