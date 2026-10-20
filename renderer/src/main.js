@@ -1,6 +1,7 @@
 import { renderDocument, escapeHtml } from './document.js';
 import { createSanitizer } from './sanitize.js';
 import { rewriteLocalImages } from './assets.js';
+import { buildOutline } from './outline.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -165,6 +166,7 @@ window.DotMD = {
     }
     placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
+    buildOutline(doc, document.getElementById('margin'), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
     window.scrollTo(0, y);
     await renderDiagrams(doc);
     post({ type: 'rendered' });

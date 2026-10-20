@@ -95,6 +95,13 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .meta .agent-codex { background: var(--agent-codex); }
 .meta .agent-cursor { background: var(--agent-cursor); }
 .meta .field b { color: var(--ink-2); font-weight: 600; }
+
+/* The prototype's .toc. It stays in view while the text scrolls. */
+.margin { position: relative; font-family: var(--font-ui); }
+.toc { position: sticky; top: 24px; display: flex; flex-direction: column; align-items: flex-start; padding: 4px 0 0 28px; font-size: 12px; line-height: 1.95; color: var(--ink-4); }
+.toc button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.toc button:first-child { color: var(--ink); font-weight: 500; }
+.toc button:hover { color: var(--ink); }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
