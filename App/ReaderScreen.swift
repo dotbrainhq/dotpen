@@ -18,6 +18,7 @@ struct ReaderScreen: View {
 
     var body: some View {
         ReaderView(controller: controller)
+            .background(WindowTabbing())
             .navigationTitle(fileURL?.lastPathComponent ?? "Untitled")
             .navigationSubtitle(fileURL.map { $0.deletingLastPathComponent().path(percentEncoded: false) } ?? "")
             .toolbar {
