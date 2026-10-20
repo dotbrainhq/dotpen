@@ -11,7 +11,7 @@ struct FileList: View {
 
     var body: some View {
         List(selection: $selection) {
-            ForEach(library.folders) { folder in
+            ForEach(library.folders, id: \.folder.path) { folder in
                 FolderSection(
                     folder: folder,
                     sort: sort,
@@ -74,6 +74,7 @@ struct FolderSection: View, Equatable {
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
+                                .selectionDisabled()
                         }
                     }
                 }
@@ -88,6 +89,7 @@ struct FolderSection: View, Equatable {
             } label: {
                 FolderRow(folder: folder)
                     .contextMenu { FolderMenu(folder: folder) }
+                    .selectionDisabled()
             }
         }
     }
