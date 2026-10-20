@@ -219,18 +219,23 @@ private func eventually(within deadline: Duration = .seconds(2), _ condition: ()
     #expect(try await eventually { !listsDependency() })
 }
 
-@MainActor @Test func overlappingEventsForOneFileKeepTheNewestContent() async throws {
+/// A file event that arrives while the first scan runs waits for it, so the scan can't overwrite the newer content.
+@MainActor @Test func aFileEventDuringTheFirstScanAppliesAfterIt() async throws {
     let temp = try TempFolder()
-    try temp.write("README.md", "# Repo")
-    let library = try makeLibrary()
-    try await library.addFolder(temp.url)
-    let id = try #require(library.folders.first?.id)
-    library.removeFolderWatchersForTesting()
+    for index in 0..<500 {
+        try temp.write("notes/\(index).md", "# Note \(index)")
+    }
     let file = try temp.write("plan.md", "# One")
-    async let first: () = library.handle([file.path], in: id)
+    let library = try makeLibrary()
+    let adding = Task { try await library.addFolder(temp.url) }
+    // The folder shows up once the first scan is queued.
+    #expect(try await eventually { !library.folders.isEmpty })
+    let id = try #require(library.folders.first?.id)
     try temp.write("plan.md", "# Two")
-    async let second: () = library.handle([file.path], in: id)
-    _ = await (first, second)
+    await library.handle([file.path], in: id)
+    #expect(library.folders.first?.documents.count == 501)
+    #expect(library.folders.first?.documents.first { $0.relativePath == "plan.md" }?.title == "Two")
+    try await adding.value
     #expect(library.folders.first?.documents.first { $0.relativePath == "plan.md" }?.title == "Two")
 }
 
@@ -265,4 +270,58 @@ private func eventually(within deadline: Duration = .seconds(2), _ condition: ()
     #expect(library.folders.first?.accessLost == true)
     #expect(library.folders.first?.documents.map(\.relativePath) == ["README.md"])
     #expect(library.watcherCountForTesting == 0)
+}
+
+@MainActor @Test func droppedEventsRescanTheFolder() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    try temp.write("docs/new.md", "# New")
+    await library.handle([FolderEvent(path: temp.url.path, isDirectory: false, isRemoved: false, isRenamed: false, mustScanSubDirs: true)], in: id)
+    #expect(Set(library.folders.first?.documents.map(\.relativePath) ?? []) == ["README.md", "docs/new.md"])
+}
+
+/// Read state per path, to compare a folder's rows before and after.
+@MainActor
+private func readStates(_ library: Library) -> [String: ReadState] {
+    Dictionary(uniqueKeysWithValues: (library.folders.first?.documents ?? []).map { ($0.relativePath, $0.readState) })
+}
+
+@MainActor @Test func aRescanOfAVanishedRootKeepsTheRows() async throws {
+    let temp = try TempFolder()
+    let elsewhere = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    library.removeFolderWatchersForTesting()
+    // Batches already handed to the main actor run now, before the move, so only the rescan can see the missing root.
+    try await Task.sleep(for: .milliseconds(100))
+    library.markUnread(try #require(library.folders.first?.documents.first { $0.relativePath == "plan.md" }))
+    let before = readStates(library)
+    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    library.showIgnored = true
+    #expect(try await eventually { library.folders.first?.accessLost == true })
+    #expect(readStates(library) == before)
+    #expect(before["plan.md"] == .new)
+}
+
+@MainActor @Test func filesThatVanishWithTheRootKeepTheirRows() async throws {
+    let temp = try TempFolder()
+    let elsewhere = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let before = readStates(library)
+    let paths = ["README.md", "plan.md"].map { temp.url.appending(path: $0).path }
+    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    await library.handle(paths.map { FolderEvent(path: $0, isDirectory: false, isRemoved: true, isRenamed: false) }, in: id)
+    #expect(library.folders.first?.accessLost == true)
+    #expect(readStates(library) == before)
 }

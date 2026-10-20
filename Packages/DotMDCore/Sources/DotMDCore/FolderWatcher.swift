@@ -8,14 +8,21 @@ public struct FolderEvent: Sendable, Equatable {
     public let isDirectory: Bool
     public let isRemoved: Bool
     public let isRenamed: Bool
+    /// FSEvents dropped or merged events under this folder (MustScanSubDirs, UserDropped or KernelDropped).
+    /// Anything below it may have changed.
+    public let mustScanSubDirs: Bool
 
-    public init(path: String, isDirectory: Bool, isRemoved: Bool, isRenamed: Bool) {
+    public init(path: String, isDirectory: Bool, isRemoved: Bool, isRenamed: Bool, mustScanSubDirs: Bool = false) {
         self.path = path
         self.isDirectory = isDirectory
         self.isRemoved = isRemoved
         self.isRenamed = isRenamed
+        self.mustScanSubDirs = mustScanSubDirs
     }
 }
+
+private let rescanFlags = UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEventStreamEventFlagUserDropped
+                                 | kFSEventStreamEventFlagKernelDropped)
 
 /// Reports changed paths under a folder through one FSEvents stream, batched by the stream's latency.
 /// The owner keeps the watcher alive and calls cancel() when it stops watching.
@@ -46,7 +53,8 @@ public final class FolderWatcher: @unchecked Sendable {
                     path: path,
                     isDirectory: flags & UInt32(kFSEventStreamEventFlagItemIsDir) != 0,
                     isRemoved: flags & UInt32(kFSEventStreamEventFlagItemRemoved) != 0,
-                    isRenamed: flags & UInt32(kFSEventStreamEventFlagItemRenamed) != 0
+                    isRenamed: flags & UInt32(kFSEventStreamEventFlagItemRenamed) != 0,
+                    mustScanSubDirs: flags & rescanFlags != 0
                 )
             }
             watcher.onChange(events)

@@ -44,6 +44,8 @@ public final class Library {
     /// The newest job per folder. Scans and event batches for one folder run one after another.
     @ObservationIgnored private var folderWork: [Int64: Task<(), Never>] = [:]
     @ObservationIgnored private var rescanAllTask: Task<(), Never>?
+    /// A queued rescan per folder that hasn't started yet. Later requests wait on it instead of queuing another.
+    @ObservationIgnored private var pendingRescans: [Int64: Task<(), Never>] = [:]
 
     public init(database: LibraryDatabase) {
         self.database = database
@@ -149,8 +151,10 @@ public final class Library {
     private func open(_ folder: WatchedFolder, firstScan: Bool) async {
         guard let id = folder.id else { return }
         watchers.removeValue(forKey: id)?.cancel()
+        // The new access starts before the old one stops, so the folder is never left without a grant in between.
+        let resolved = try? FolderAccess.resolve(folder.bookmark)
         releaseAccess(id)
-        guard let resolved = try? FolderAccess.resolve(folder.bookmark) else {
+        guard let resolved else {
             update(id) { $0.url = nil }
             return
         }
@@ -167,7 +171,7 @@ public final class Library {
         watchers[id] = FolderWatcher(url: root) { [weak self] events in
             Task { @MainActor [weak self] in await self?.handle(events, in: id) }
         }
-        await serialized(id) { [weak self] in await self?.performRescan(id, firstScan: firstScan) }
+        await rescan(id, firstScan: firstScan)
         if state(id) == nil {
             // Removed while the scan ran. removeFolder already let go of both; this keeps a late open from holding them.
             watchers.removeValue(forKey: id)?.cancel()
@@ -189,14 +193,19 @@ public final class Library {
     /// Runs work after every earlier job for the same folder has finished, and returns when it has run.
     /// Work must not call serialized for the same folder, or it waits on itself.
     private func serialized(_ id: Int64, _ work: @escaping @MainActor () async -> ()) async {
+        let task = enqueue(id, work)
+        await task.value
+        if folderWork[id] == task { folderWork[id] = nil }
+    }
+
+    private func enqueue(_ id: Int64, _ work: @escaping @MainActor () async -> ()) -> Task<(), Never> {
         let previous = folderWork[id]
         let task = Task { @MainActor in
             await previous?.value
             await work()
         }
         folderWork[id] = task
-        await task.value
-        if folderWork[id] == task { folderWork[id] = nil }
+        return task
     }
 
     private func rescanAll() async {
@@ -206,8 +215,20 @@ public final class Library {
         }
     }
 
+    /// Queues a rescan and returns once it has run. A later rescan that is queued and not started yet already covers
+    /// this request, so it waits on that one. A first scan is never merged: it marks every file as read.
     private func rescan(_ id: Int64, firstScan: Bool) async {
-        await serialized(id) { [weak self] in await self?.performRescan(id, firstScan: firstScan) }
+        if !firstScan, let pending = pendingRescans[id] {
+            await pending.value
+            return
+        }
+        let task = enqueue(id) { [weak self] in
+            if !firstScan { self?.pendingRescans[id] = nil }
+            await self?.performRescan(id, firstScan: firstScan)
+        }
+        if !firstScan { pendingRescans[id] = task }
+        await task.value
+        if folderWork[id] == task { folderWork[id] = nil }
     }
 
     private func performRescan(_ id: Int64, firstScan: Bool) async {
@@ -216,6 +237,11 @@ public final class Library {
         let result = await Task.detached(priority: .utility) { FolderScanner.scan(root: root, rules: rules) }.value
         // Removed or reconnected elsewhere while scanning: these results belong to nothing now.
         guard state(id)?.url == root else { return }
+        // A vanished root scans as empty. Writing that would delete every row and its read state.
+        guard FileManager.default.fileExists(atPath: root.path) else {
+            loseAccess(id)
+            return
+        }
         try? database.replaceDocuments(folderID: id, with: result.files, firstScan: firstScan)
         let branch = GitBranch.current(in: root)
         update(id) { state in
@@ -243,24 +269,30 @@ public final class Library {
         await handle(events, in: id)
     }
 
-    /// Applies one batch of file events for a folder, after any earlier work for it.
+    /// Applies one batch of file events for a folder, after any earlier work for it. A batch that needs a full
+    /// rescan queues one afterwards, merged with any rescan already waiting.
     func handle(_ events: [FolderEvent], in id: Int64) async {
-        await serialized(id) { [weak self] in await self?.apply(events, in: id) }
+        var needsRescan = false
+        await serialized(id) { [weak self] in needsRescan = await self?.apply(events, in: id) ?? false }
+        if needsRescan { await rescan(id, firstScan: false) }
     }
 
-    /// A folder event rescans the whole folder unless it is ignored. A Markdown file updates its own row. Other files
-    /// are skipped, except the root .gitignore (rescan) and .git/HEAD (branch). The root itself going away loses access.
-    private func apply(_ events: [FolderEvent], in id: Int64) async {
-        guard let root = state(id)?.url else { return }
+    /// Returns true when the folder needs a full rescan: a folder event outside the ignore rules, the root .gitignore,
+    /// or a batch where FSEvents dropped or merged events. Otherwise a Markdown file updates its own row and other
+    /// files are skipped, except .git/HEAD (branch). The root going away loses access.
+    private func apply(_ events: [FolderEvent], in id: Int64) async -> Bool {
+        guard let root = state(id)?.url else { return false }
         let rootPath = root.path
         // Checked for every batch, not only one naming the root: removals under a moved root can arrive before the
         // root's own event, and would delete rows (or a rescan would find nothing) for a folder that only moved.
         if !FileManager.default.fileExists(atPath: rootPath) {
             loseAccess(id)
-            return
+            return false
         }
+        // Dropped or merged events name a folder, often the root, and may not carry ItemIsDir.
+        if events.contains(where: \.mustScanSubDirs) { return true }
         let rules = showIgnored ? IgnoreRules.none : IgnoreRules.load(root: root)
-        var files: [String] = []
+        var files: Set<String> = []
         var needsRescan = false
         var branchChanged = false
         for event in events {
@@ -279,24 +311,26 @@ public final class Library {
             if relativePath == ".git" || relativePath.hasPrefix(".git/") || rules.containsIgnoredPath(relativePath) { continue }
             if event.isDirectory {
                 needsRescan = true
-            } else if FolderScanner.isMarkdown(URL(fileURLWithPath: path)), !files.contains(relativePath) {
-                files.append(relativePath)
+            } else if FolderScanner.isMarkdown(URL(fileURLWithPath: path)) {
+                files.insert(relativePath)
             }
         }
-        if needsRescan {
-            await performRescan(id, firstScan: false)
-            return
-        }
+        if needsRescan { return true }
         if branchChanged {
             let branch = GitBranch.current(in: root)
             update(id) { $0.branch = branch }
         }
-        guard !files.isEmpty else { return }
-        for relativePath in files {
+        guard !files.isEmpty else { return false }
+        for relativePath in files.sorted() {
             let url = root.appending(path: relativePath)
             let file = await Task.detached(priority: .utility) { FolderScanner.summarize(fileURL: url, relativePath: relativePath) }.value
-            guard state(id)?.url == root else { return }
+            guard state(id)?.url == root else { return false }
             guard let file else {
+                // A file that vanished with its root isn't deleted: the folder only lost access.
+                guard FileManager.default.fileExists(atPath: rootPath) else {
+                    loseAccess(id)
+                    return false
+                }
                 try? database.deleteDocument(folderID: id, relativePath: relativePath)
                 continue
             }
@@ -306,6 +340,7 @@ public final class Library {
             }
         }
         reloadDocuments(id)
+        return false
     }
 
     private func trimmed(_ path: String) -> String {
