@@ -38,7 +38,11 @@ public enum FileTree {
         if let root = byDirectory[""] {
             groups.append(FileGroup(path: "", documents: sorted(root, by: sort)))
         }
-        return groups
+        guard sort == .lastChanged else { return groups }
+        // Sorted by last change, the group holding the newest file comes first, the root files included.
+        // The stable sort keeps the name order (subfolders, then root files) for groups that tie.
+        let newest = groups.map { $0.documents.map(\.modifiedAt).max() ?? .distantPast }
+        return groups.indices.sorted { newest[$0] != newest[$1] ? newest[$0] > newest[$1] : $0 < $1 }.map { groups[$0] }
     }
 
     static func sorted(_ documents: [Document], by order: FileSortOrder) -> [Document] {

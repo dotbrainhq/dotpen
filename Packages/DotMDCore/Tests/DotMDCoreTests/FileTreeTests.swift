@@ -67,3 +67,12 @@ private func document(_ path: String, title: String? = nil, minutesAgo: Double =
 @Test func anEmptyFilterIsInactive() {
     #expect(!FileFilter().isActive)
 }
+
+@Test func lastChangedPutsTheGroupWithTheNewestFileFirst() {
+    let groups = FileTree.groups(for: [
+        document("HANDOFF.md", minutesAgo: 1),
+        document("docs/guide.md", minutesAgo: 30),
+        document("docs/plans/rollout.md", minutesAgo: 60),
+    ], sort: .lastChanged, filter: FileFilter())
+    #expect(groups.map(\.path) == ["", "docs", "docs/plans"])
+}

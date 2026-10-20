@@ -34,7 +34,8 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable, Fetchab
 
 /// Folder colors the person can choose. Green is left out because green means "new to you".
 public enum FolderColor: String, Codable, CaseIterable, Sendable, DatabaseValueConvertible {
-    case blue, indigo, purple, pink, red, orange, yellow, gray
+    // Blue, orange and purple first: the order the prototype gives its first three folders.
+    case blue, orange, purple, pink, red, yellow, indigo, gray
 
     /// The first color not in use, so new folders look different without the person picking.
     public static func next(after used: [FolderColor]) -> FolderColor {

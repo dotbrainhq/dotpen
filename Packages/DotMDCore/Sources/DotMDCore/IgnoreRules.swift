@@ -5,10 +5,12 @@ import Foundation
 /// Covers the common .gitignore forms (names, globs, a leading slash, a trailing slash, and "**" as a whole path
 /// segment that matches any number of folders). Negation lines are skipped.
 public struct IgnoreRules: Sendable {
-    public static let builtInDirectories: Set<String> = [
+    /// The folder names hidden in every watched folder, in the order the file list names them.
+    public static let builtInDirectoryNames: [String] = [
         ".git", "node_modules", "build", "dist", "DerivedData", ".build", "Pods", ".next", ".nuxt",
         ".svelte-kit", ".turbo", ".venv", "venv", "__pycache__", "coverage", ".cache",
     ]
+    public static let builtInDirectories = Set(builtInDirectoryNames)
 
     /// Hides nothing. Used when the person chooses to show ignored paths.
     public static let none = IgnoreRules(patterns: [], usesBuiltIn: false)

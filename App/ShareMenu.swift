@@ -20,8 +20,14 @@ struct ShareMenu: View {
                 ShareLink(item: fileURL) { Text("Share…") }
             }
         } label: {
-            Label("Share", systemImage: "square.and.arrow.up")
+            Label {
+                Text("Share")
+            } icon: {
+                Icon("share", size: 16)
+            }
         }
+        // The prototype draws share as a plain button, with no menu arrow beside it.
+        .menuIndicator(.hidden)
         .help("Share, export as PDF or HTML")
     }
 }
