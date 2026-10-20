@@ -187,6 +187,6 @@ private func makeFolder(in database: LibraryDatabase) throws -> Int64 {
 
 @Test func folderColorsSkipColorsInUse() {
     #expect(FolderColor.next(after: []) == .blue)
-    #expect(FolderColor.next(after: [.blue, .indigo]) == .purple)
+    #expect(FolderColor.next(after: [.blue, .orange]) == .purple)
     #expect(!FolderColor.allCases.map(\.rawValue).contains("green"))
 }

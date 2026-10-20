@@ -36,8 +36,7 @@ struct Twisty: View {
     var body: some View {
         ZStack {
             if let isExpanded {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .medium))
+                Icon("chevron", size: 10)
                     .foregroundStyle(Palette.ink4)
                     .rotationEffect(.degrees(isExpanded ? 0 : -90))
             }
@@ -54,28 +53,28 @@ struct FolderRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Twisty(isExpanded: isExpanded)
-            Image(systemName: folder.accessLost ? "lock.fill" : "folder.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(folder.folder.color.color)
-                .opacity(folder.accessLost ? 0.6 : 1)
-                .frame(width: 16)
+            Icon(folder.accessLost ? "lock" : "folder", size: 16)
+                .foregroundStyle(folder.accessLost ? Palette.ink4 : folder.folder.color.color)
             Text(folder.folder.name)
                 .font(.system(size: 12.5, weight: .semibold))
                 .lineLimit(1)
                 .fixedSize()
             if let branch = folder.branch {
+                // Clipped at the badge with no ellipsis, as the prototype draws "feat/rate-".
                 HStack(spacing: 3) {
-                    Image(systemName: "arrow.triangle.branch")
-                        .font(.system(size: 11))
+                    Icon("branch", size: 11)
                     Text(branch)
                         .font(.system(size: 11, design: .monospaced))
                         .lineLimit(1)
-                        .truncationMode(.tail)
+                        .fixedSize()
                 }
                 .foregroundStyle(Palette.ink4)
                 .padding(.leading, 6)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
+                .clipped()
+            } else {
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
             if folder.unreadCount > 0 && !folder.accessLost {
                 Text("\(folder.unreadCount)")
                     .font(.system(size: 10.5, weight: .semibold, design: .monospaced))
@@ -116,10 +115,8 @@ struct DirectoryRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Twisty(isExpanded: isExpanded)
-            Image(systemName: "folder")
-                .font(.system(size: 15))
+            Icon("directory", size: 15)
                 .foregroundStyle(Palette.ink4)
-                .frame(width: 15)
             Text(path)
                 .font(.system(size: 13))
                 .foregroundStyle(Palette.ink)
@@ -162,11 +159,9 @@ struct FileRow: View {
     private var content: some View {
         HStack(spacing: 6) {
             Twisty(isExpanded: nil)
-            Image(systemName: document.kind.symbolName)
-                .font(.system(size: 15))
+            Icon(document.kind.iconName, size: 15)
                 .foregroundStyle(Palette.accentInk)
                 .opacity(selected ? 1 : 0.85)
-                .frame(width: 15)
             Text(document.displayName(showTitles: showTitles))
                 .font(.system(size: 13, weight: document.readState == .read ? .regular : .semibold))
                 .foregroundStyle(Palette.ink)
@@ -190,8 +185,7 @@ struct FileRow: View {
     /// The pencil while the file is being written wins over the unread dot.
     @ViewBuilder private var badge: some View {
         if isWriting {
-            Image(systemName: "pencil")
-                .font(.system(size: 13))
+            Icon("pencil", size: 13)
                 .foregroundStyle(Palette.accent)
                 .symbolEffect(.wiggle, options: .repeating.speed(0.5), isActive: !reduceMotion)
                 .frame(width: 16, height: 16)

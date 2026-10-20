@@ -8,7 +8,7 @@ struct FilesWindow: View {
     @State private var selection: Int64?
     @State private var columns = NavigationSplitViewVisibility.all
     @AppStorage("fileSort") private var sort = FileSortOrder.lastChanged
-    @AppStorage("showTitles") private var showTitles = true
+    @AppStorage("showTitles") private var showTitles = false
     @State private var filter = FileFilter()
 
     var body: some View {
@@ -20,10 +20,25 @@ struct FilesWindow: View {
                     .frame(maxHeight: .infinity)
                 FilterBar(filter: $filter, addFolder: addFolder)
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 272, max: 420)
+            .padding(.leading, 8)
+            // The prototype's sidebar is a fixed 272 points wide.
+            .navigationSplitViewColumnWidth(272)
+            .background { SidebarPanel() }
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             detail
+                .toolbar {
+                    // The prototype keeps the sidebar button at the left of the content toolbar, not beside the window controls.
+                    ToolbarItem(placement: .navigation) {
+                        Button(action: toggleFiles) {
+                            Icon("sidebar", size: 16)
+                        }
+                        .help(columns == .detailOnly ? "Show the file list" : "Hide the file list")
+                        .accessibilityLabel(columns == .detailOnly ? "Show the file list" : "Hide the file list")
+                    }
+                }
         }
+        .toolbar(removing: .sidebarToggle)
         .focusedSceneValue(\.toggleFiles, toggleFiles)
         .frame(minWidth: 760, minHeight: 480)
     }
@@ -76,5 +91,21 @@ struct FilesCommands: Commands {
             }
             .keyboardShortcut("s", modifiers: [.command, .option])
         }
+    }
+}
+
+/// The prototype's sidebar: a rounded panel inset 8 points from the window's top, left and bottom edges,
+/// with a hairline edge, on the window color. Drawn here so it looks the same on every macOS version.
+private struct SidebarPanel: View {
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 13, style: .continuous)
+        Palette.window
+            .overlay {
+                shape
+                    .fill(Palette.sidebar)
+                    .overlay(shape.strokeBorder(Palette.sidebarEdge, lineWidth: 0.5))
+                    .padding(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 0))
+            }
+            .ignoresSafeArea()
     }
 }

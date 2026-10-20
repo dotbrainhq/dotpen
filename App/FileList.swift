@@ -12,12 +12,14 @@ struct FileList: View {
     @State private var collapsed: Set<String> = []
     @State private var focusedRow: OutlineRowID?
     @FocusState private var listFocused: Bool
+    /// The ring shows only after keyboard use, like the prototype's :focus-visible. A click hides it again.
+    @State private var usingKeyboard = false
     @State private var typed = ""
     @State private var typedAt = Date.distantPast
 
     var body: some View {
         let selectedFolder = selection.flatMap { library.document(key: $0)?.folderID }
-        let actions = OutlineActions(activate: activate)
+        let actions = OutlineActions(activate: { activate($0, fromKeyboard: false) })
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
@@ -29,7 +31,7 @@ struct FileList: View {
                             filter: filter,
                             collapsed: collapsedKeys(in: folder),
                             selection: selectedFolder == folder.id ? selection : nil,
-                            focus: listFocused && focusedRow?.folderID == folder.id ? focusedRow : nil,
+                            focus: listFocused && usingKeyboard && focusedRow?.folderID == folder.id ? focusedRow : nil,
                             actions: actions
                         )
                         .equatable()
@@ -52,6 +54,8 @@ struct FileList: View {
                     typeSelect(press, proxy: proxy)
                 }
             }
+            // The prototype shows no scroll bar, and a visible one would narrow every row.
+            .scrollIndicators(.never)
         }
         .onChange(of: listFocused) { _, focused in
             if focused { placeFocus() }
@@ -82,9 +86,10 @@ struct FileList: View {
     }
 
     /// A click, Return or VoiceOver's default action: opens a file, or opens or closes a folder.
-    private func activate(_ row: OutlineRow) {
+    private func activate(_ row: OutlineRow, fromKeyboard: Bool) {
         focusedRow = row.id
         listFocused = true
+        usingKeyboard = fromKeyboard
         switch row.content {
         case let .file(document): selection = document.key
         case .folder, .directory: setExpanded(row, !row.isExpanded)
@@ -101,6 +106,7 @@ struct FileList: View {
 
     private func moveFocus(to id: OutlineRowID?, proxy: ScrollViewProxy) {
         guard let id else { return }
+        usingKeyboard = true
         focusedRow = id
         proxy.scrollTo(id)
     }
@@ -138,7 +144,7 @@ struct FileList: View {
 
     private func openFocused() -> KeyPress.Result {
         guard let row = visibleRows.first(where: { $0.id == focusedRow }) else { return .ignored }
-        activate(row)
+        activate(row, fromKeyboard: true)
         return .handled
     }
 
@@ -183,18 +189,21 @@ struct FolderSection: View, Equatable {
 
     var body: some View {
         let rows = Outline.rows(for: folder, sort: sort, filter: filter, showTitles: showTitles, collapsed: collapsed)
-        ForEach(rows) { row in
-            rowView(row)
-                .id(row.id)
-        }
-        if folder.status == .ready && folder.documents.isEmpty && rows.first?.isExpanded == true {
-            Text("No Markdown files yet")
-                .font(.system(size: 12))
-                .foregroundStyle(Palette.ink4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 42)
-                .padding(.top, 4)
-                .padding(.bottom, 6)
+        // An explicit stack: `.equatable()` would otherwise wrap these rows in one with the default 8 point spacing.
+        VStack(spacing: 0) {
+            ForEach(rows) { row in
+                rowView(row)
+                    .id(row.id)
+            }
+            if folder.status == .ready && folder.documents.isEmpty && rows.first?.isExpanded == true {
+                Text("No Markdown files yet")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Palette.ink4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 42)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
+            }
         }
     }
 

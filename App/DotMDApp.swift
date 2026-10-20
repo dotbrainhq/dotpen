@@ -16,6 +16,8 @@ struct DotMDApp: App {
                     #endif
                 }
         }
+        // The prototype's window size.
+        .defaultSize(width: 1200, height: 806)
         .commands {
             SidebarCommands()
             FilesCommands()

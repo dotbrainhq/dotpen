@@ -24,8 +24,7 @@ struct ListHeader: View {
                 HStack(spacing: 3) {
                     Text(sort == .lastChanged ? "Last changed" : "Name")
                         .font(.system(size: 11, weight: .medium))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 10, weight: .medium))
+                    Icon("chevron", size: 10)
                 }
                 .foregroundStyle(Palette.ink3)
                 .padding(.vertical, 2)
@@ -39,9 +38,11 @@ struct ListHeader: View {
             .accessibilityLabel("Sort by")
             .accessibilityValue(sort == .lastChanged ? "Last changed" : "Name")
         }
-        .padding(.top, 2)
+        // The prototype's 2 and 6, less the 2.5 points the system title bar adds above the sidebar content,
+        // so the header and the first row land where they do in the prototype.
+        .padding(.top, -0.5)
         .padding(.horizontal, 10)
-        .padding(.bottom, 6)
+        .padding(.bottom, 5.5)
         .padding(.horizontal, 8)
     }
 }
@@ -54,8 +55,7 @@ struct FilterBar: View {
     var body: some View {
         HStack(spacing: 4) {
             Button(action: addFolder) {
-                Image(systemName: "plus")
-                    .font(.system(size: 13))
+                Icon("plus", size: 16)
                     .frame(width: 26, height: 26)
             }
             .buttonStyle(SidebarButtonStyle(cornerRadius: 7))
@@ -63,15 +63,12 @@ struct FilterBar: View {
             .accessibilityLabel("Watch a folder")
             FilterField(query: $filter.query)
             Toggle(isOn: $filter.unreadOnly) {
-                Image(systemName: "circle.fill")
-                    .font(.system(size: 13))
-                    .imageScale(.small)
+                Icon("unread", size: 16)
             }
             .help("Show only unread files")
             .accessibilityLabel("Unread only")
             Toggle(isOn: $filter.changedOnly) {
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 13))
+                Icon("changed", size: 16)
             }
             .help("Show only files that changed since you read them")
             .accessibilityLabel("Changed only")
@@ -93,8 +90,7 @@ private struct FilterField: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13))
+            Icon("search", size: 13)
                 .foregroundStyle(Palette.ink4)
                 .accessibilityHidden(true)
             TextField("Filter", text: $query, prompt: Text("Filter").foregroundStyle(Palette.ink4))
