@@ -102,3 +102,50 @@ import Testing
     try temp.write("feature/.git", "gitdir: ../main/.git/worktrees/feature\n")
     #expect(GitBranch.current(in: temp.url.appending(path: "feature")) == "feature")
 }
+
+@Test func doubleStarMatchesAnyNumberOfFolders() {
+    let rules = IgnoreRules(gitignore: "**/foo/bar\na/**/b\n")
+    #expect(rules.isIgnored("foo/bar", isDirectory: true))
+    #expect(rules.isIgnored("x/y/foo/bar", isDirectory: true))
+    #expect(rules.isIgnored("a/b", isDirectory: true))
+    #expect(rules.isIgnored("a/x/b", isDirectory: true))
+    #expect(rules.isIgnored("a/x/y/b", isDirectory: true))
+    #expect(!rules.isIgnored("c/a/b", isDirectory: true))
+}
+
+@Test func scanningThroughASymlinkedRootWorks() throws {
+    let target = try TempFolder()
+    try target.write("README.md", "# Repo")
+    let holder = try TempFolder()
+    let link = holder.url.appending(path: "link")
+    try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target.url)
+    let result = FolderScanner.scan(root: link, rules: .none)
+    #expect(result.files.map(\.relativePath) == ["README.md"])
+    #expect(FolderScanner.countMarkdown(root: link, rules: .none) == 1)
+}
+
+@Test func ignoredListSkipsFilesThatAreNotMarkdown() throws {
+    let temp = try TempFolder()
+    try temp.write("debug.log", "noise")
+    try temp.write("out/report.md", "# Report")
+    let result = FolderScanner.scan(root: temp.url, rules: IgnoreRules(gitignore: "*.log\nout/\n"))
+    #expect(!result.ignored.contains("debug.log"))
+    #expect(result.ignored.contains("out"))
+}
+
+@Test func eventPathNamingAnIgnoredFolderIsIgnored() {
+    #expect(IgnoreRules().containsIgnoredPath("node_modules"))
+}
+
+@Test func nonBranchRefsKeepTheirName() throws {
+    let temp = try TempFolder()
+    try temp.write(".git/HEAD", "ref: refs/remotes/origin/main\n")
+    #expect(GitBranch.current(in: temp.url) == "remotes/origin/main")
+}
+
+@Test func uppercaseMarkdownExtensionIsFound() throws {
+    let temp = try TempFolder()
+    try temp.write("NOTES.MD", "# Notes")
+    let result = FolderScanner.scan(root: temp.url, rules: .none)
+    #expect(result.files.map(\.relativePath) == ["NOTES.MD"])
+}

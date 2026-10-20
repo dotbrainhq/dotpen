@@ -3,7 +3,7 @@ import Foundation
 
 public struct ScanResult: Sendable {
     public var files: [ScannedFile]
-    /// Paths hidden by ignore rules, relative to the root. A hidden folder counts once.
+    /// Folders and Markdown files hidden by ignore rules, relative to the root. A hidden folder counts once.
     public var ignored: [String]
 }
 
@@ -43,23 +43,24 @@ public enum FolderScanner {
         )
     }
 
-    /// Calls visit for each Markdown file and returns the ignored paths. Symbolic links are skipped.
+    /// Calls visit for each Markdown file and returns the ignored folders and Markdown files. Symbolic links are skipped.
     private static func walk(root: URL, rules: IgnoreRules, visit: (URL, String) -> ()) -> [String] {
+        let root = Paths.canonical(root)
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
         guard let enumerator = FileManager.default.enumerator(at: root, includingPropertiesForKeys: Array(keys), options: [.skipsPackageDescendants]) else {
             return []
         }
-        let rootPath = root.standardizedFileURL.path
+        let rootPath = root.path
         var ignored: [String] = []
         for case let url as URL in enumerator {
-            let path = url.standardizedFileURL.path
+            let path = url.path
             guard path.hasPrefix(rootPath + "/") else { continue }
             let relativePath = String(path.dropFirst(rootPath.count + 1))
             let values = try? url.resourceValues(forKeys: keys)
             if values?.isSymbolicLink == true { continue }
             let isDirectory = values?.isDirectory == true
             if rules.isIgnored(relativePath, isDirectory: isDirectory) {
-                ignored.append(relativePath)
+                if isDirectory || isMarkdown(url) { ignored.append(relativePath) }
                 if isDirectory { enumerator.skipDescendants() }
                 continue
             }

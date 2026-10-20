@@ -2,8 +2,8 @@ import Darwin
 import Foundation
 
 /// Decides which paths the file list hides: build output and dependencies by name, plus the folder's root .gitignore.
-/// Covers the common .gitignore forms (names, globs, a leading slash, a trailing slash, "**/" and "/**").
-/// Negation lines are skipped.
+/// Covers the common .gitignore forms (names, globs, a leading slash, a trailing slash, and "**" as a whole path
+/// segment that matches any number of folders). Negation lines are skipped.
 public struct IgnoreRules: Sendable {
     public static let builtInDirectories: Set<String> = [
         ".git", "node_modules", "build", "dist", "DerivedData", ".build", "Pods", ".next", ".nuxt",
@@ -41,13 +41,18 @@ public struct IgnoreRules: Sendable {
         let parts = relativePath.split(separator: "/")
         for end in parts.indices {
             let prefix = parts[...end].joined(separator: "/")
-            if isIgnored(prefix, isDirectory: end < parts.count - 1) { return true }
+            if end < parts.count - 1 {
+                if isIgnored(prefix, isDirectory: true) { return true }
+            } else if isIgnored(prefix, isDirectory: false) || isIgnored(prefix, isDirectory: true) {
+                // The last part may name a file or a folder, and an event doesn't say which.
+                return true
+            }
         }
         return false
     }
 
     struct Pattern: Sendable {
-        let glob: String
+        let segments: [String]
         let anchored: Bool
         let directoryOnly: Bool
 
@@ -65,22 +70,41 @@ public struct IgnoreRules: Sendable {
                 text.removeLast()
                 directoryOnly = true
             }
-            if text.hasPrefix("**/") { text.removeFirst(3) }
+            var floating = false
+            if text.hasPrefix("**/") {
+                text.removeFirst(3)
+                floating = true
+            }
             if text.hasPrefix("/") {
                 text.removeFirst()
                 anchored = true
-            } else if text.contains("/") {
+            } else if text.contains("/") && !floating {
                 anchored = true
             }
             guard !text.isEmpty else { return nil }
-            glob = text
+            segments = text.split(separator: "/", omittingEmptySubsequences: true).map(String.init)
             self.anchored = anchored
             self.directoryOnly = directoryOnly
+            if segments.isEmpty { return nil }
         }
 
         func matches(_ path: String, name: String, isDirectory: Bool) -> Bool {
             if directoryOnly && !isDirectory { return false }
-            return anchored ? fnmatch(glob, path, FNM_PATHNAME) == 0 : fnmatch(glob, name, 0) == 0
+            if segments.count == 1 && !anchored { return fnmatch(segments[0], name, 0) == 0 }
+            let components = path.split(separator: "/").map(String.init)
+            if anchored { return Self.match(segments[...], components[...]) }
+            return components.indices.contains { Self.match(segments[...], components[$0...]) }
+        }
+
+        /// "**" takes zero or more path components. Any other segment takes exactly one. The whole path must be used.
+        private static func match(_ glob: ArraySlice<String>, _ path: ArraySlice<String>) -> Bool {
+            guard let first = glob.first else { return path.isEmpty }
+            if first == "**" {
+                let rest = glob.dropFirst()
+                return (path.startIndex...path.endIndex).contains { match(rest, path[$0...]) }
+            }
+            guard let component = path.first, fnmatch(first, component, 0) == 0 else { return false }
+            return match(glob.dropFirst(), path.dropFirst())
         }
     }
 }

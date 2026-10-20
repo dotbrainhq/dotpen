@@ -16,7 +16,11 @@ public enum GitBranch {
         }
         guard let head = try? String(contentsOf: gitDirectory.appending(path: "HEAD"), encoding: .utf8)
             .trimmingCharacters(in: .whitespacesAndNewlines), !head.isEmpty else { return nil }
-        if head.hasPrefix("ref: refs/heads/") { return String(head.dropFirst("ref: refs/heads/".count)) }
+        if head.hasPrefix("ref: ") {
+            let ref = String(head.dropFirst("ref: ".count))
+            if ref.hasPrefix("refs/heads/") { return String(ref.dropFirst("refs/heads/".count)) }
+            return ref.hasPrefix("refs/") ? String(ref.dropFirst("refs/".count)) : ref
+        }
         return String(head.prefix(7))
     }
 }
