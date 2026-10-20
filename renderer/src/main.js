@@ -37,6 +37,8 @@ function loadScript(src) {
 }
 
 let diagramCount = 0;
+// Drawn diagrams by source, so a reload reuses them instead of drawing them again.
+let diagramCache = new Map();
 
 async function renderDiagram(source, theme) {
   window.mermaid.initialize({
@@ -51,8 +53,26 @@ async function renderDiagram(source, theme) {
 
 // Mermaid bakes colors into the SVG, so each diagram is drawn in both themes and the
 // stylesheet shows the one that fits the page color, the system appearance, or print.
+// Runs before the scroll position is restored, so the page above the reader keeps its height
+// and a reload doesn't move the text. Diagrams that changed keep the old figure's height until drawn.
+function placeDiagrams(doc, oldHeights) {
+  const used = new Map();
+  doc.querySelectorAll('figure.mermaid-block').forEach((figure, index) => {
+    const source = figure.querySelector('pre.mermaid')?.textContent ?? '';
+    const html = diagramCache.get(source);
+    if (html) {
+      figure.innerHTML = html;
+      figure.classList.add('rendered');
+      used.set(source, html);
+    } else if (oldHeights[index]) {
+      figure.style.minHeight = `${oldHeights[index]}px`;
+    }
+  });
+  diagramCache = used;
+}
+
 async function renderDiagrams(doc) {
-  const blocks = [...doc.querySelectorAll('figure.mermaid-block')];
+  const blocks = [...doc.querySelectorAll('figure.mermaid-block:not(.rendered)')];
   if (!blocks.length) return;
   if (!window.mermaid) await loadScript('mermaid.js');
   for (const figure of blocks) {
@@ -60,10 +80,14 @@ async function renderDiagrams(doc) {
     try {
       const light = await renderDiagram(source, 'neutral');
       const dark = await renderDiagram(source, 'dark');
-      figure.innerHTML = `<div class="diagram-light">${light}</div><div class="diagram-dark">${dark}</div>`;
+      const html = `<div class="diagram-light">${light}</div><div class="diagram-dark">${dark}</div>`;
+      figure.innerHTML = html;
+      figure.style.minHeight = '';
       figure.classList.add('rendered');
+      diagramCache.set(source, html);
     } catch (error) {
       const message = String(error?.message ?? error).split('\n')[0];
+      figure.style.minHeight = '';
       figure.classList.add('failed');
       figure.innerHTML = `<div class="diagram-error"><b>This diagram didn't render</b><code>${escapeHtml(message)}</code></div>`;
       post({ type: 'diagramError', line: Number(figure.dataset.line ?? 0), message });
@@ -88,7 +112,9 @@ window.DotMD = {
     applyOptions(options);
     const doc = document.getElementById('doc');
     const y = window.scrollY;
+    const oldHeights = [...doc.querySelectorAll('figure.mermaid-block')].map((figure) => figure.offsetHeight);
     doc.innerHTML = renderDocument(markdown);
+    placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
     window.scrollTo(0, y);
     await renderDiagrams(doc);
