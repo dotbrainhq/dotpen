@@ -54,7 +54,7 @@ import Testing
     try temp.write("node_modules/pkg/README.md", "# Dependency")
     try temp.write("out/report.md", "# Report")
     try temp.write(".gitignore", "out/\n")
-    let result = FolderScanner.scan(root: temp.url, rules: .load(root: temp.url))
+    let result = try #require(FolderScanner.scan(root: temp.url, rules: .load(root: temp.url)))
     #expect(result.files.map(\.relativePath) == ["README.md", "docs/specs/token-bucket.markdown"])
     #expect(result.files.map(\.title) == ["Repo", "Token bucket"])
     #expect(result.files.map(\.kind) == [.readme, .spec])
@@ -65,7 +65,7 @@ import Testing
     let temp = try TempFolder()
     try temp.write("README.md", "# Repo")
     try temp.write("node_modules/pkg/README.md", "# Dependency")
-    let result = FolderScanner.scan(root: temp.url, rules: .none)
+    let result = try #require(FolderScanner.scan(root: temp.url, rules: .none))
     #expect(result.files.map(\.relativePath) == ["README.md", "node_modules/pkg/README.md"])
     #expect(result.ignored.isEmpty)
 }
@@ -119,7 +119,7 @@ import Testing
     let holder = try TempFolder()
     let link = holder.url.appending(path: "link")
     try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target.url)
-    let result = FolderScanner.scan(root: link, rules: .none)
+    let result = try #require(FolderScanner.scan(root: link, rules: .none))
     #expect(result.files.map(\.relativePath) == ["README.md"])
     #expect(FolderScanner.countMarkdown(root: link, rules: .none) == 1)
 }
@@ -128,7 +128,7 @@ import Testing
     let temp = try TempFolder()
     try temp.write("debug.log", "noise")
     try temp.write("out/report.md", "# Report")
-    let result = FolderScanner.scan(root: temp.url, rules: IgnoreRules(gitignore: "*.log\nout/\n"))
+    let result = try #require(FolderScanner.scan(root: temp.url, rules: IgnoreRules(gitignore: "*.log\nout/\n")))
     #expect(!result.ignored.contains("debug.log"))
     #expect(result.ignored.contains("out"))
 }
@@ -146,7 +146,7 @@ import Testing
 @Test func uppercaseMarkdownExtensionIsFound() throws {
     let temp = try TempFolder()
     try temp.write("NOTES.MD", "# Notes")
-    let result = FolderScanner.scan(root: temp.url, rules: .none)
+    let result = try #require(FolderScanner.scan(root: temp.url, rules: .none))
     #expect(result.files.map(\.relativePath) == ["NOTES.MD"])
 }
 
@@ -155,4 +155,36 @@ import Testing
     #expect(rules.isIgnored("gen", isDirectory: true))
     #expect(rules.isIgnored("x/gen", isDirectory: true))
     #expect(rules.containsIgnoredPath("x/gen/a.md"))
+}
+
+@Test func gitIsNeverListedAsIgnored() throws {
+    let temp = try TempFolder()
+    try temp.write(".git/HEAD", "ref: refs/heads/main\n")
+    try temp.write(".git/notes.md", "# Not a document")
+    let hidden = try #require(FolderScanner.scan(root: temp.url, rules: .load(root: temp.url)))
+    #expect(hidden.ignored.isEmpty)
+    #expect(hidden.files.isEmpty)
+    let shown = try #require(FolderScanner.scan(root: temp.url, rules: .none))
+    #expect(shown.ignored.isEmpty)
+    #expect(shown.files.isEmpty)
+}
+
+@Test func anUnreadableRootScansAsNil() throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try setPermissions(temp.url, 0o000)
+    defer { try? setPermissions(temp.url, 0o755) }
+    #expect(FolderScanner.scan(root: temp.url, rules: .none) == nil)
+    #expect(FolderScanner.scan(root: temp.url.appending(path: "missing"), rules: .none) == nil)
+}
+
+@Test func unreadableFilesAreListed() throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let plan = try temp.write("plan.md", "# Plan")
+    try setPermissions(plan, 0o000)
+    defer { try? setPermissions(plan, 0o644) }
+    let result = try #require(FolderScanner.scan(root: temp.url, rules: .none))
+    #expect(result.files.map(\.relativePath) == ["README.md"])
+    #expect(result.unreadable == ["plan.md"])
 }

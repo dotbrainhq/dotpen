@@ -1,18 +1,40 @@
 import Foundation
 import Observation
 
+/// Whether DotMD can reach a watched folder.
+public enum FolderStatus: Sendable, Equatable {
+    /// Listed, with its bookmark not resolved yet.
+    case connecting
+    /// Resolved and watched. Its scan may still be queued or running.
+    case ready
+    /// The bookmark didn't resolve or the folder went away. Its rows and read state are kept until it reconnects.
+    case accessLost
+}
+
 /// One watched folder as the file list shows it.
 public struct FolderState: Identifiable, Equatable, Sendable {
     public var folder: WatchedFolder
-    /// The folder's real location while DotMD can read it. Nil when access was lost.
+    public var status: FolderStatus
+    /// The folder's real location while it is ready. Nil while connecting and when access was lost.
     public var url: URL?
     public var branch: String?
     public var documents: [Document]
     /// Paths hidden by ignore rules, relative to the folder.
     public var ignored: [String]
 
+    public init(folder: WatchedFolder, status: FolderStatus, url: URL? = nil, branch: String? = nil,
+                documents: [Document] = [], ignored: [String] = []) {
+        self.folder = folder
+        self.status = status
+        self.url = url
+        self.branch = branch
+        self.documents = documents
+        self.ignored = ignored
+    }
+
     public var id: Int64 { folder.id ?? 0 }
-    public var accessLost: Bool { url == nil }
+    public var accessLost: Bool { status == .accessLost }
+    public var isConnecting: Bool { status == .connecting }
     public var unreadCount: Int { documents.filter { $0.readState != .read }.count }
 }
 
@@ -53,16 +75,24 @@ public final class Library {
 
     // MARK: Folders
 
-    /// Opens every stored folder, indexes it, and starts watching. Calling it again does nothing.
+    /// Opens every stored folder and starts watching it, then indexes them and returns when every scan has run.
+    /// Every folder is resolved before any scan starts, so one waiting its turn never reads as access lost.
+    /// Calling it again does nothing.
     public func start() async {
         guard !started else { return }
         started = true
         let stored = (try? database.folders()) ?? []
         folders = stored.map { folder in
-            FolderState(folder: folder, url: nil, branch: nil, documents: (try? database.documents(folderID: folder.id ?? 0)) ?? [], ignored: [])
+            FolderState(folder: folder, status: .connecting, documents: (try? database.documents(folderID: folder.id ?? 0)) ?? [])
         }
-        for folder in stored {
-            await open(folder, firstScan: false)
+        var ready: [Int64] = []
+        for folder in stored where connect(folder) {
+            if let id = folder.id { ready.append(id) }
+        }
+        let scans = ready.map { ($0, queueRescan($0)) }
+        for (id, scan) in scans {
+            await scan.value
+            if folderWork[id] == scan { folderWork[id] = nil }
         }
     }
 
@@ -81,8 +111,8 @@ public final class Library {
             name: root.lastPathComponent,
             color: .next(after: folders.map(\.folder.color))
         ))
-        folders.append(FolderState(folder: folder, url: nil, branch: nil, documents: [], ignored: []))
-        await open(folder, firstScan: true)
+        folders.append(FolderState(folder: folder, status: .connecting))
+        await open(folder)
     }
 
     /// Points a folder whose access was lost at the location the person chose again. Read state is kept.
@@ -91,7 +121,7 @@ public final class Library {
         folder.bookmark = try FolderAccess.bookmark(for: url)
         folder.path = FolderAccess.canonical(url).path
         try database.update(folder)
-        await open(folder, firstScan: false)
+        await open(folder)
     }
 
     public func removeFolder(_ id: Int64) {
@@ -130,33 +160,45 @@ public final class Library {
     }
 
     public func markRead(_ document: Document) {
-        _ = try? database.markRead(documentID: document.key)
-        reloadDocuments(document.folderID)
+        if let updated = try? database.markRead(documentID: document.key) { put(updated) }
     }
 
     public func markUnread(_ document: Document) {
-        _ = try? database.markUnread(documentID: document.key)
-        reloadDocuments(document.folderID)
+        if let updated = try? database.markUnread(documentID: document.key) { put(updated) }
     }
 
     public func setPinned(_ document: Document, _ pinned: Bool) {
-        _ = try? database.setPinned(documentID: document.key, pinned)
-        reloadDocuments(document.folderID)
+        if let updated = try? database.setPinned(documentID: document.key, pinned) { put(updated) }
     }
 
     // MARK: Indexing
 
-    /// Resolves the folder's bookmark, starts watching, then scans. The watcher starts first so changes made during
-    /// the scan aren't lost: their batches queue behind the scan and apply after it.
-    private func open(_ folder: WatchedFolder, firstScan: Bool) async {
-        guard let id = folder.id else { return }
+    /// Connects, then scans. The watcher starts first so changes made during the scan aren't lost: their batches
+    /// queue behind the scan and apply after it.
+    private func open(_ folder: WatchedFolder) async {
+        guard let id = folder.id, connect(folder) else { return }
+        await rescan(id)
+        if state(id) == nil {
+            // Removed while the scan ran. removeFolder already let go of both; this keeps a late open from holding them.
+            watchers.removeValue(forKey: id)?.cancel()
+            releaseAccess(id)
+        }
+    }
+
+    /// Resolves the folder's bookmark and starts watching it. Returns false, with the folder marked access lost,
+    /// when the bookmark doesn't resolve.
+    private func connect(_ folder: WatchedFolder) -> Bool {
+        guard let id = folder.id else { return false }
         watchers.removeValue(forKey: id)?.cancel()
         // The new access starts before the old one stops, so the folder is never left without a grant in between.
         let resolved = try? FolderAccess.resolve(folder.bookmark)
         releaseAccess(id)
         guard let resolved else {
-            update(id) { $0.url = nil }
-            return
+            update(id) { state in
+                state.url = nil
+                state.status = .accessLost
+            }
+            return false
         }
         accessURLs[id] = resolved.url
         var folder = folder
@@ -167,16 +209,12 @@ public final class Library {
         update(id) { state in
             state.folder = folder
             state.url = root
+            state.status = .ready
         }
         watchers[id] = FolderWatcher(url: root) { [weak self] events in
             Task { @MainActor [weak self] in await self?.handle(events, in: id) }
         }
-        await rescan(id, firstScan: firstScan)
-        if state(id) == nil {
-            // Removed while the scan ran. removeFolder already let go of both; this keeps a late open from holding them.
-            watchers.removeValue(forKey: id)?.cancel()
-            releaseAccess(id)
-        }
+        return true
     }
 
     private func releaseAccess(_ id: Int64) {
@@ -187,7 +225,10 @@ public final class Library {
     private func loseAccess(_ id: Int64) {
         watchers.removeValue(forKey: id)?.cancel()
         releaseAccess(id)
-        update(id) { $0.url = nil }
+        update(id) { state in
+            state.url = nil
+            state.status = .accessLost
+        }
     }
 
     /// Runs work after every earlier job for the same folder has finished, and returns when it has run.
@@ -211,40 +252,62 @@ public final class Library {
     private func rescanAll() async {
         for id in folders.map(\.id) {
             guard !Task.isCancelled else { return }
-            await rescan(id, firstScan: false)
+            await rescan(id)
         }
     }
 
-    /// Queues a rescan and returns once it has run. A later rescan that is queued and not started yet already covers
-    /// this request, so it waits on that one. A first scan is never merged: it marks every file as read.
-    private func rescan(_ id: Int64, firstScan: Bool) async {
-        if !firstScan, let pending = pendingRescans[id] {
-            await pending.value
-            return
-        }
-        let task = enqueue(id) { [weak self] in
-            if !firstScan { self?.pendingRescans[id] = nil }
-            await self?.performRescan(id, firstScan: firstScan)
-        }
-        if !firstScan { pendingRescans[id] = task }
+    /// Queues a rescan and returns once it has run.
+    private func rescan(_ id: Int64) async {
+        let task = queueRescan(id)
         await task.value
         if folderWork[id] == task { folderWork[id] = nil }
     }
 
-    private func performRescan(_ id: Int64, firstScan: Bool) async {
+    /// Queues a rescan behind the folder's earlier work. A rescan that is queued and not started yet already covers
+    /// this request, so that one is returned instead. Merging is safe for a first scan too: the database decides
+    /// which scan is first when it writes.
+    private func queueRescan(_ id: Int64) -> Task<(), Never> {
+        if let pending = pendingRescans[id] { return pending }
+        let task = enqueue(id) { [weak self] in
+            self?.pendingRescans[id] = nil
+            await self?.performRescan(id)
+        }
+        pendingRescans[id] = task
+        return task
+    }
+
+    private func performRescan(_ id: Int64) async {
         guard let root = state(id)?.url else { return }
+        let showIgnored = showIgnored
         let rules = showIgnored ? IgnoreRules.none : IgnoreRules.load(root: root)
-        let result = await Task.detached(priority: .utility) { FolderScanner.scan(root: root, rules: rules) }.value
+        let usualRules = showIgnored ? IgnoreRules.load(root: root) : nil
+        let scan = await Task.detached(priority: .utility) { () -> (ScanResult, Set<String>)? in
+            guard let result = FolderScanner.scan(root: root, rules: rules) else { return nil }
+            // Files that only show because ignored paths are shown arrive as read, so toggling doesn't add unread files.
+            let shownByToggle = usualRules.map { usual in
+                Set(result.files.map(\.relativePath).filter { usual.containsIgnoredPath($0) })
+            } ?? []
+            return (result, shownByToggle)
+        }.value
         // Removed or reconnected elsewhere while scanning: these results belong to nothing now.
         guard state(id)?.url == root else { return }
-        // A vanished root scans as empty. Writing that would delete every row and its read state.
+        // A vanished root can't be scanned. Writing nothing keeps every row and its read state.
         guard FileManager.default.fileExists(atPath: root.path) else {
             loseAccess(id)
             return
         }
-        try? database.replaceDocuments(folderID: id, with: result.files)
+        // The root is there but couldn't be read: an empty result would read as every file deleted.
+        guard let (result, shownByToggle) = scan else { return }
+        let database = database
+        await Task.detached(priority: .utility) {
+            try? database.replaceDocuments(folderID: id, with: result.files, unreadable: Set(result.unreadable),
+                                           readPaths: shownByToggle)
+        }.value
+        guard state(id) != nil else { return }
+        let indexedAt = (try? database.folder(id: id))?.indexedAt
         let branch = GitBranch.current(in: root)
         update(id) { state in
+            state.folder.indexedAt = indexedAt
             state.ignored = result.ignored
             state.branch = branch
         }
@@ -274,12 +337,13 @@ public final class Library {
     func handle(_ events: [FolderEvent], in id: Int64) async {
         var needsRescan = false
         await serialized(id) { [weak self] in needsRescan = await self?.apply(events, in: id) ?? false }
-        if needsRescan { await rescan(id, firstScan: false) }
+        if needsRescan { await rescan(id) }
     }
 
     /// Returns true when the folder needs a full rescan: a folder event outside the ignore rules, the root .gitignore,
-    /// or a batch where FSEvents dropped or merged events. Otherwise a Markdown file updates its own row and other
-    /// files are skipped, except .git/HEAD (branch). The root going away loses access.
+    /// a batch where FSEvents dropped or merged events, or more than maxFilesPerBatch Markdown files. Otherwise a
+    /// Markdown file updates its own row and other files are skipped, except .git/HEAD (branch). The root going away
+    /// loses access.
     private func apply(_ events: [FolderEvent], in id: Int64) async -> Bool {
         guard let root = state(id)?.url else { return false }
         let rootPath = root.path
@@ -292,6 +356,7 @@ public final class Library {
         // Dropped or merged events name a folder, often the root, and may not carry ItemIsDir.
         if events.contains(where: \.mustScanSubDirs) { return true }
         let rules = showIgnored ? IgnoreRules.none : IgnoreRules.load(root: root)
+        let usualRules = showIgnored ? IgnoreRules.load(root: root) : nil
         var files: Set<String> = []
         var needsRescan = false
         var branchChanged = false
@@ -308,14 +373,16 @@ public final class Library {
                 needsRescan = true
                 continue
             }
-            if relativePath == ".git" || relativePath.hasPrefix(".git/") || rules.containsIgnoredPath(relativePath) { continue }
+            // .git folders are skipped at any depth, as the scanner does, even with ignored paths shown.
+            if relativePath.split(separator: "/").contains(".git") || rules.containsIgnoredPath(relativePath) { continue }
             if event.isDirectory {
                 needsRescan = true
             } else if FolderScanner.isMarkdown(URL(fileURLWithPath: path)) {
                 files.insert(relativePath)
             }
         }
-        if needsRescan { return true }
+        // One rescan transaction is cheaper than a transaction per file once a batch gets big (a checkout, a pull).
+        if needsRescan || files.count > Self.maxFilesPerBatch { return true }
         if branchChanged {
             let branch = GitBranch.current(in: root)
             update(id) { $0.branch = branch }
@@ -331,17 +398,25 @@ public final class Library {
                     loseAccess(id)
                     return false
                 }
+                // A file that is there but couldn't be read keeps its row. Only a file that is gone loses it.
+                guard FolderScanner.isGone(url.path) else { continue }
                 try? database.deleteDocument(folderID: id, relativePath: relativePath)
+                update(id) { $0.documents.removeAll { $0.relativePath == relativePath } }
                 continue
             }
             let before = try? database.document(folderID: id, relativePath: relativePath)
-            if let stored = try? database.upsert(file, folderID: id), before?.contentHash != stored.contentHash {
-                markWriting(stored.key)
+            // As in a rescan, a file that only shows because ignored paths are shown arrives as read.
+            let shownByToggle = usualRules?.containsIgnoredPath(relativePath) ?? false
+            if let stored = try? database.upsert(file, folderID: id, readIfNew: shownByToggle) {
+                put(stored)
+                if before?.contentHash != stored.contentHash { markWriting(stored.key) }
             }
         }
-        reloadDocuments(id)
         return false
     }
+
+    /// Above this many Markdown files in one batch, a full rescan replaces the per-file updates.
+    static let maxFilesPerBatch = 50
 
     private func trimmed(_ path: String) -> String {
         path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
@@ -370,6 +445,18 @@ public final class Library {
         change(&folders[index])
     }
 
+    /// Replaces a document's row in its folder in place, or adds it when the folder doesn't list it yet.
+    private func put(_ document: Document) {
+        update(document.folderID) { state in
+            if let index = state.documents.firstIndex(where: { $0.id == document.id }) {
+                state.documents[index] = document
+            } else {
+                state.documents.append(document)
+            }
+        }
+    }
+
+    /// Rereads a folder's documents. For full rescans; single-row changes go through put.
     private func reloadDocuments(_ id: Int64) {
         let documents = (try? database.documents(folderID: id)) ?? []
         update(id) { $0.documents = documents }

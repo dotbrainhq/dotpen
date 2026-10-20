@@ -325,3 +325,147 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     #expect(library.folders.first?.accessLost == true)
     #expect(readStates(library) == before)
 }
+
+/// Every stored folder is resolved before any scan starts, so a folder waiting for its scan reads as ready.
+@MainActor @Test func foldersWaitingForTheirScanAreNotAccessLost() async throws {
+    let first = try TempFolder()
+    let second = try TempFolder()
+    for index in 0..<300 {
+        try first.write("notes/\(index).md", "# Note \(index)")
+        try second.write("notes/\(index).md", "# Note \(index)")
+    }
+    let database = try LibraryDatabase.inMemory()
+    let adding = Library(database: database)
+    try await adding.addFolder(first.url)
+    try await adding.addFolder(second.url)
+    adding.removeFolderWatchersForTesting()
+    let library = Library(database: database)
+    let starting = Task { await library.start() }
+    #expect(try await eventually { !library.folders.isEmpty })
+    #expect(library.folders.map(\.status) == [.ready, .ready])
+    #expect(library.folders.allSatisfy { !$0.accessLost && !$0.isConnecting && $0.url != nil })
+    await starting.value
+    #expect(library.folders.map(\.status) == [.ready, .ready])
+}
+
+/// DotMD quit after adding a folder and before its first scan wrote anything. The next launch's scan is the first.
+@MainActor @Test func anInterruptedFirstScanStillCountsEverythingAsRead() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("docs/plan.md", "# Plan")
+    let database = try LibraryDatabase.inMemory()
+    _ = try database.insert(WatchedFolder(bookmark: FolderAccess.bookmark(for: temp.url), path: temp.url.path, name: "repo", color: .blue))
+    let library = Library(database: database)
+    await library.start()
+    let folder = try #require(library.folders.first)
+    #expect(folder.documents.count == 2)
+    #expect(folder.unreadCount == 0)
+    #expect(folder.folder.indexedAt != nil)
+}
+
+@MainActor @Test func anUnreadableRootKeepsEveryRow() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    library.markUnread(try #require(library.folders.first?.documents.first { $0.relativePath == "plan.md" }))
+    let before = readStates(library)
+    try setPermissions(temp.url, 0o000)
+    defer { try? setPermissions(temp.url, 0o755) }
+    await library.handle([FolderEvent(path: temp.url.path, isDirectory: true, isRemoved: false, isRenamed: false, mustScanSubDirs: true)], in: id)
+    #expect(readStates(library) == before)
+    // Inside an unreadable root a file can't even be checked for, which is not the same as being gone.
+    await library.handle([temp.url.appending(path: "plan.md").path], in: id)
+    #expect(readStates(library) == before)
+    #expect(library.folders.first?.status == .ready)
+}
+
+/// The first scan can't read the root, so it writes nothing and the folder's next scan still counts as first.
+@MainActor @Test func aFailedFirstScanLeavesTheNextOneFirst() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let database = try LibraryDatabase.inMemory()
+    _ = try database.insert(WatchedFolder(bookmark: FolderAccess.bookmark(for: temp.url), path: temp.url.path, name: "repo", color: .blue))
+    try setPermissions(temp.url, 0o000)
+    defer { try? setPermissions(temp.url, 0o755) }
+    let library = Library(database: database)
+    await library.start()
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    #expect(library.folders.first?.status == .ready)
+    #expect(library.folders.first?.documents.isEmpty == true)
+    #expect(library.folders.first?.folder.indexedAt == nil)
+    try setPermissions(temp.url, 0o755)
+    await library.handle([FolderEvent(path: temp.url.path, isDirectory: true, isRemoved: false, isRenamed: false, mustScanSubDirs: true)], in: id)
+    #expect(library.folders.first?.documents.map(\.readState) == [.read])
+    #expect(library.folders.first?.folder.indexedAt != nil)
+}
+
+@MainActor @Test func anUnreadableFileKeepsItsRow() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let plan = try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let before = readStates(library)
+    try setPermissions(plan, 0o000)
+    defer { try? setPermissions(plan, 0o644) }
+    await library.handle([plan.path], in: id)
+    #expect(readStates(library) == before)
+    await library.handle([FolderEvent(path: temp.url.path, isDirectory: true, isRemoved: false, isRenamed: false, mustScanSubDirs: true)], in: id)
+    #expect(readStates(library) == before)
+}
+
+@MainActor @Test func aBigBatchOfFilesRescansOnce() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    let paths = try (0..<60).map { try temp.write("notes/\($0).md", "# Note \($0)").path }
+    await library.handle(paths.map { FolderEvent(path: $0, isDirectory: false, isRemoved: false, isRenamed: false) }, in: id)
+    #expect(library.folders.first?.documents.count == 61)
+    #expect(library.folders.first?.unreadCount == 60)
+}
+
+@MainActor @Test func showingAndHidingIgnoredPathsAddsNoUnreadFiles() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("node_modules/pkg/README.md", "# Dependency")
+    try temp.write(".git/HEAD", "ref: refs/heads/main\n")
+    try temp.write(".git/notes.md", "# Not a document")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let listsDependency = { library.folders.first?.documents.contains { $0.relativePath == "node_modules/pkg/README.md" } == true }
+    library.showIgnored = true
+    #expect(try await eventually(listsDependency))
+    #expect(library.folders.first?.unreadCount == 0)
+    #expect(library.folders.first?.documents.contains { $0.relativePath.hasPrefix(".git/") } == false)
+    library.showIgnored = false
+    #expect(try await eventually { !listsDependency() })
+    #expect(library.folders.first?.unreadCount == 0)
+    #expect(library.folders.first?.ignored == ["node_modules"])
+}
+
+/// An event can add a row under an ignored folder while ignored paths are shown, before the rescan gets there.
+@MainActor @Test func anEventUnderAnIgnoredFolderWhileShownArrivesRead() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.removeFolderWatchersForTesting()
+    library.showIgnored = true
+    let dependency = try temp.write("node_modules/pkg/README.md", "# Dependency")
+    let docs = try temp.write("docs/new.md", "# New")
+    await library.handle([dependency.path, docs.path], in: id)
+    let states = readStates(library)
+    #expect(states["node_modules/pkg/README.md"] == .read)
+    #expect(states["docs/new.md"] == .new)
+}
