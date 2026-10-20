@@ -130,17 +130,17 @@ public final class Library {
     }
 
     public func markRead(_ document: Document) {
-        try? database.markRead(documentID: document.key)
+        _ = try? database.markRead(documentID: document.key)
         reloadDocuments(document.folderID)
     }
 
     public func markUnread(_ document: Document) {
-        try? database.markUnread(documentID: document.key)
+        _ = try? database.markUnread(documentID: document.key)
         reloadDocuments(document.folderID)
     }
 
     public func setPinned(_ document: Document, _ pinned: Bool) {
-        try? database.setPinned(documentID: document.key, pinned)
+        _ = try? database.setPinned(documentID: document.key, pinned)
         reloadDocuments(document.folderID)
     }
 
@@ -242,7 +242,7 @@ public final class Library {
             loseAccess(id)
             return
         }
-        try? database.replaceDocuments(folderID: id, with: result.files, firstScan: firstScan)
+        try? database.replaceDocuments(folderID: id, with: result.files)
         let branch = GitBranch.current(in: root)
         update(id) { state in
             state.ignored = result.ignored

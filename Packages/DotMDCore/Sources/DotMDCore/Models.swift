@@ -12,14 +12,19 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable, Fetchab
     public var name: String
     public var color: FolderColor
     public var addedAt: Date
+    /// When a full scan last wrote this folder's documents. Nil until the first one finishes, and that first scan
+    /// counts every file as read. Only LibraryDatabase.replaceDocuments sets it.
+    public var indexedAt: Date?
 
-    public init(id: Int64? = nil, bookmark: Data, path: String, name: String, color: FolderColor, addedAt: Date = .now) {
+    public init(id: Int64? = nil, bookmark: Data, path: String, name: String, color: FolderColor, addedAt: Date = .now,
+                indexedAt: Date? = nil) {
         self.id = id
         self.bookmark = bookmark
         self.path = path
         self.name = name
         self.color = color
         self.addedAt = addedAt
+        self.indexedAt = indexedAt
     }
 
     public mutating func didInsert(_ inserted: InsertionSuccess) {
