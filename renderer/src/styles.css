@@ -138,6 +138,10 @@ html::-webkit-scrollbar { display: none; }
 .map[hidden] { display: none; }
 .map .vp { position: absolute; left: 0; right: 0; top: 0; height: 46%; border-radius: 8px; background: var(--fill-2); opacity: .7; }
 .map i { position: absolute; left: 1px; right: 1px; height: 3px; border-radius: 2px; background: var(--accent); }
+
+/* The dotted line where reading stopped. */
+.memory { display: flex; align-items: center; gap: 10px; margin: 26px 0 4px; font: 500 11px var(--font-ui); color: var(--ink-4); }
+.memory::before, .memory::after { content: ""; flex: 1; height: 1px; background: repeating-linear-gradient(90deg, var(--ink-5) 0 4px, transparent 4px 8px); }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
@@ -230,6 +234,7 @@ html::-webkit-scrollbar { display: none; }
   .copy { display: none; }
   .chip { display: none; }
   .map { display: none; }
+  .memory { display: none; }
   .del, .del-gap, .gut, .removed { display: none; } .ins { color: inherit; background: none; } .added::before { display: none; }
   :root[data-paper] .mermaid-block .diagram-light { display: block; }
   :root[data-paper] .mermaid-block .diagram-dark { display: none; }
