@@ -5,11 +5,13 @@ import SwiftUI
 struct DotMDApp: App {
     @State private var library: Library
     @State private var bridge: AgentBridge
+    @State private var activity: AgentActivity
 
     init() {
         let library = Library.makeDefault()
         _library = State(initialValue: library)
         _bridge = State(initialValue: AgentBridge(library: library))
+        _activity = State(initialValue: AgentActivity(library: library))
     }
 
     var body: some Scene {
@@ -17,9 +19,11 @@ struct DotMDApp: App {
             FilesWindow()
                 .environment(library)
                 .environment(bridge)
+                .environment(activity)
                 .task {
                     await library.start()
                     bridge.startIfEnabled()
+                    activity.start()
                     #if DEBUG
                     await DebugWorkspace.open(in: library)
                     #endif
@@ -38,9 +42,11 @@ struct DotMDApp: App {
             SettingsView()
                 .environment(library)
                 .environment(bridge)
+                .environment(activity)
                 .task {
                     await library.start()
                     bridge.startIfEnabled()
+                    activity.start()
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -54,9 +60,11 @@ struct DotMDApp: App {
                 .frame(minWidth: 560, minHeight: 480)
                 .environment(library)
                 .environment(bridge)
+                .environment(activity)
                 .task {
                     await library.start()
                     bridge.startIfEnabled()
+                    activity.start()
                 }
         }
         .commands { ExportCommands() }

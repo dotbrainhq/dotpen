@@ -10,6 +10,11 @@ enum RealHome {
             return URL(fileURLWithPath: arguments[index + 1]).standardizedFileURL.path
         }
         #endif
+        return account
+    }()
+
+    /// The home folder from the user record, even when a demo home stands in for `path`. Agent logs live here.
+    static let account: String = {
         guard let entry = getpwuid(getuid()), let directory = entry.pointee.pw_dir else { return NSHomeDirectory() }
         return String(cString: directory)
     }()

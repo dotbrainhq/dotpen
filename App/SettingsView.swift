@@ -1,4 +1,5 @@
 import AppKit
+import DotMDBridge
 import DotMDCore
 import SwiftUI
 
@@ -167,9 +168,10 @@ private struct FoldersSettings: View {
     }
 }
 
-/// The agent bridge's switch, then how to connect Claude Code once it's on.
+/// The agent bridge's switch, then how each agent connects once it's on, then the agent logs DotMD may read.
 private struct IntegrationsSettings: View {
     @Environment(AgentBridge.self) private var bridge
+    @Environment(AgentActivity.self) private var activity
 
     var body: some View {
         VStack(spacing: 0) {
@@ -199,6 +201,22 @@ private struct IntegrationsSettings: View {
                 }
             case .off:
                 EmptyView()
+            }
+            // Reading an agent's logs is how DotMD names who wrote a file and follows a file while it's written.
+            ForEach(Agent.allCases, id: \.self) { agent in
+                SettingsDivider()
+                SettingsRow(title: "\(agent.name) sessions",
+                            detail: "Name \(agent.name) on the files it writes. Reads \(AgentActivity.logFolderName(for: agent)) on this Mac.") {
+                    if activity.granted.contains(agent) {
+                        Button("Stop Reading") { activity.revokeAccess(to: agent) }
+                            .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                            .accessibilityLabel("Stop reading \(agent.name) sessions")
+                    } else {
+                        Button("Allow Access…") { activity.grantAccess(to: agent) }
+                            .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                            .accessibilityLabel("Allow access to \(agent.name) sessions")
+                    }
+                }
             }
         }
         .padding(EdgeInsets(top: 18, leading: 26, bottom: 22, trailing: 26))
