@@ -7,6 +7,8 @@ import { showChip, nextChangeLine, revealBlock } from './chip.js';
 import { createMap } from './map.js';
 import { showMemory, topLine } from './memory.js';
 import { markLive as glow, setWriting as showCaret } from './live.js';
+import { selectionInfo, showSelectionBar, hideSelectionBar } from './selection.js';
+import { renderComments, clearComments, openComposer, layoutCards } from './comments.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -20,6 +22,8 @@ const map = createMap(document);
 let memory = null;
 // Whether the file is being written, and its last written block, put back after every render.
 let writing = { writing: false, lastLine: null };
+// The file's comments and who writes them, put back after every render. Null outside the watched folders.
+let comments = null;
 let lastSentLine = null;
 let scrollTimer = null;
 
@@ -74,11 +78,100 @@ function decorate(doc) {
 }
 
 document.addEventListener('keydown', (event) => {
-  if (event.key !== 'n' && event.key !== 'N') return;
-  if (event.metaKey || event.ctrlKey || event.altKey || !marks) return;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
   if (event.target.closest?.('input, textarea, [contenteditable]')) return;
-  event.preventDefault();
-  nextChange();
+  if ((event.key === 'n' || event.key === 'N') && marks) {
+    event.preventDefault();
+    nextChange();
+  } else if ((event.key === 'c' || event.key === 'C') && selected && canComment()) {
+    event.preventDefault();
+    compose(selected);
+  }
+});
+
+const margin = () => document.getElementById('margin');
+
+// Comments are kept for files in watched folders, and written in the margin, which a narrow window or the
+// comments panel hides.
+function canComment() {
+  return Boolean(comments?.canComment) && root.dataset.panel !== 'on' && getComputedStyle(margin()).display !== 'none';
+}
+
+function showComments(doc) {
+  if (!comments) {
+    clearComments(doc, margin());
+    map.setComments([]);
+    return;
+  }
+  renderComments(doc, margin(), comments.items, comments.author, {
+    onEdit: (comment) => openComposer(doc, margin(), comment, comments.author, { onSubmit: saveComment }),
+    onResolve: (comment) => post({ type: 'resolveComment', id: comment.id }),
+  });
+  map.setComments(comments.items.map((comment) => comment.line));
+}
+
+function saveComment({ line, quote, body, id }) {
+  CSS.highlights?.delete('compose');
+  post({ type: 'saveComment', line, quote, body, id });
+}
+
+// The selection under the bar, with its range, so Comment can still find it once the composer takes focus.
+let selected = null;
+
+function compose({ info, range }) {
+  const doc = document.getElementById('doc');
+  hideSelectionBar(doc);
+  selected = null;
+  // The passage keeps its selection color while the composer has focus, as in the prototype.
+  if (window.Highlight) CSS.highlights.set('compose', new Highlight(range));
+  openComposer(doc, margin(), { line: info.line, quote: info.text }, comments.author, {
+    onSubmit: saveComment,
+    onCancel: () => CSS.highlights?.delete('compose'),
+  });
+}
+
+function updateSelectionBar() {
+  const doc = document.getElementById('doc');
+  const selection = window.getSelection();
+  const info = selectionInfo(doc, selection);
+  if (!info) {
+    selected = null;
+    hideSelectionBar(doc);
+    return;
+  }
+  const range = selection.getRangeAt(0).cloneRange();
+  selected = { info, range };
+  const done = () => {
+    selected = null;
+    hideSelectionBar(doc);
+  };
+  showSelectionBar(doc, range.getClientRects()[0] ?? range.getBoundingClientRect(), {
+    canComment: canComment(),
+    onComment: () => compose({ info, range }),
+    onCopy: () => {
+      post({ type: 'copyText', text: info.text });
+      done();
+    },
+    onPrompt: () => {
+      post({ type: 'copyPrompt', line: info.line, quote: info.text });
+      done();
+    },
+  });
+}
+
+document.addEventListener('mouseup', (event) => {
+  if (event.target.closest?.('[data-dotmd-ui]')) return;
+  // The selection settles after mouseup.
+  setTimeout(updateSelectionBar, 0);
+});
+document.addEventListener('keyup', (event) => {
+  if (event.shiftKey) updateSelectionBar();
+});
+document.addEventListener('selectionchange', () => {
+  if (window.getSelection().isCollapsed && selected) {
+    selected = null;
+    hideSelectionBar(document.getElementById('doc'));
+  }
 });
 
 function applyOptions(options = {}) {
@@ -240,7 +333,11 @@ window.DotMD = {
     placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
     decorate(doc);
-    buildOutline(doc, document.getElementById('margin'), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+    buildOutline(doc, margin(), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+    CSS.highlights?.delete('compose');
+    selected = null;
+    hideSelectionBar(doc);
+    showComments(doc);
     window.scrollTo(0, y);
     await renderDiagrams(doc);
     post({ type: 'rendered' });
@@ -273,6 +370,18 @@ window.DotMD = {
     writing = { writing: isWriting, lastLine: lastLine ?? null };
     showCaret(document.getElementById('doc'), writing.writing, writing.lastLine);
   },
+  setComments(payload) {
+    comments = payload;
+    showComments(document.getElementById('doc'));
+  },
+  // A comment chosen in the panel: its passage comes into view and flashes, as Next does for a change.
+  reveal(line) {
+    revealBlock(document.getElementById('doc'), line, { reduceMotion: reduceMotion() });
+  },
+  setPanel(open) {
+    root.dataset.panel = open ? 'on' : 'off';
+    layoutCards(document.getElementById('doc'), margin());
+  },
   setLayout(layout) {
     root.dataset.layout = layout === 'document' ? 'document' : 'files';
   },
@@ -284,8 +393,12 @@ window.DotMD = {
     const clone = document.getElementById('doc').cloneNode(true);
     removeMarks(clone);
     clone.querySelectorAll('[data-dotmd-ui], button.copy').forEach((el) => el.remove());
+    clone.querySelectorAll('.anch').forEach((el) => el.replaceWith(...el.childNodes));
     return clone.innerHTML;
   },
 };
+
+// Cards follow their passages as images load, diagrams draw and the window resizes.
+new ResizeObserver(() => layoutCards(document.getElementById('doc'), margin())).observe(document.getElementById('doc'));
 
 post({ type: 'ready' });

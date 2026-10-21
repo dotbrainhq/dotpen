@@ -18,6 +18,11 @@
   --accent-ink: #006239;
   --accent-wash: #def8e8;
   --accent-line: #a5d9b9;
+  --on-accent: #f7fef9;
+  --avatar: #bb9679;
+  --pop: rgba(252, 254, 253, 0.97);
+  --shadow-2: 0 0 0 .5px rgba(0, 0, 0, 0.12), 0 10px 30px -10px rgba(3, 26, 27, 0.28);
+  --shadow-3: 0 0 0 .5px rgba(0, 0, 0, 0.16), 0 30px 70px -20px rgba(0, 21, 23, 0.45);
   --status-review: #e8a127;
   --agent-claude: #c86d41;
   --agent-codex: #3a3d42;
@@ -35,6 +40,9 @@
   --line: #292f2f; --line-soft: #232728; --fill: #242929; --fill-2: #2c3232; --raise: #202525;
   --code-bg: #1d2122; --diagram: #191e1e; --accent: #4dc588; --accent-ink: #7bdca6; --accent-wash: #153524;
   --accent-line: #286344; --agent-claude: #e18c5f; --agent-codex: #bbbec2; --agent-cursor: #65afd2;
+  --on-accent: #05160c; --pop: rgba(29, 35, 35, 0.98);
+  --shadow-2: 0 0 0 .5px rgba(255, 255, 255, 0.08), 0 12px 32px -10px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 0 0 .5px rgba(255, 255, 255, 0.1), 0 30px 70px -20px rgba(0, 0, 0, 0.7);
   --select: rgba(90, 130, 210, 0.45);
   color-scheme: dark;
 }
@@ -45,6 +53,9 @@
     --line: #292f2f; --line-soft: #232728; --fill: #242929; --fill-2: #2c3232; --raise: #202525;
     --code-bg: #1d2122; --diagram: #191e1e; --accent: #4dc588; --accent-ink: #7bdca6; --accent-wash: #153524;
     --accent-line: #286344; --agent-claude: #e18c5f; --agent-codex: #bbbec2; --agent-cursor: #65afd2;
+    --on-accent: #05160c; --pop: rgba(29, 35, 35, 0.98);
+    --shadow-2: 0 0 0 .5px rgba(255, 255, 255, 0.08), 0 12px 32px -10px rgba(0, 0, 0, 0.6);
+    --shadow-3: 0 0 0 .5px rgba(255, 255, 255, 0.1), 0 30px 70px -20px rgba(0, 0, 0, 0.7);
     --select: rgba(90, 130, 210, 0.45);
     color-scheme: dark;
   }
@@ -67,6 +78,9 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 :root[data-layout="document"] .paper { grid-template-columns: 170px minmax(0, 600px) 250px; }
 :root[data-width="narrow"] .paper { grid-template-columns: 110px minmax(0, 480px) 240px; }
 :root[data-width="wide"] .paper { grid-template-columns: 70px minmax(0, 680px) 200px; }
+/* The comments panel takes the right 300 points; the margin's cards hide behind it. */
+:root[data-panel="on"] .paper { grid-template-columns: 90px minmax(0, 560px) 300px; }
+:root[data-panel="on"] .margin .cmt { display: none; }
 /* Too narrow for the margin: keep room for the change tags, drop the margin. The text column shrinks before this,
    so a scrollbar appearing doesn't flip the layout. */
 @media (max-width: 829px) {
@@ -103,6 +117,40 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .toc button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
 .toc button:first-child { color: var(--ink); font-weight: 500; }
 .toc button:hover { color: var(--ink); }
+/* With comments beside the text the outline scrolls away, so it never covers a card. */
+.margin.has-comments .toc { position: static; }
+
+/* Comments: the selection bar, the cards in the margin, and the passage each points at with its number. */
+.selpop { position: absolute; display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 10px; background: var(--pop); box-shadow: var(--shadow-3); font: 500 12.5px var(--font-ui); color: var(--ink); z-index: 4; white-space: nowrap; }
+.selpop::after { content: ""; position: absolute; left: 40px; bottom: -5px; width: 10px; height: 10px; background: inherit; transform: rotate(45deg); }
+.selpop button { font: inherit; color: var(--ink); border: 0; background: none; padding: 5px 9px; border-radius: 7px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.selpop button:hover { background: var(--fill); }
+.selpop button.primary { color: var(--accent-ink); font-weight: 600; }
+.selpop kbd { font: 600 10.5px var(--font-ui); color: var(--ink-4); }
+.selpop i { width: .5px; height: 16px; background: var(--line); margin: 0 3px; }
+.selpop svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+::highlight(compose) { background-color: var(--select); }
+.anch { background: linear-gradient(transparent 70%, var(--accent-wash) 70%); border-bottom: 1.5px dotted var(--accent); }
+.num { font: 700 10px/1 var(--font-ui); color: var(--on-accent); background: var(--accent); border-radius: 999px; padding: 2px 5px; vertical-align: 3px; margin-left: 3px; }
+/* The prototype's meta rule also caught the avatar and pushed it right; here only the time goes right. */
+.cmt { position: absolute; left: 24px; right: 22px; background: var(--raise); border-radius: 10px; padding: 10px 11px 9px; box-shadow: var(--shadow-2); font-size: 12px; line-height: 1.45; color: var(--ink); }
+.cmt .h { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.cmt .h b { font-weight: 600; }
+.cmt .h > span:last-child { margin-left: auto; color: var(--ink-4); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmt .av { width: 16px; height: 16px; border-radius: 50%; background: var(--avatar); color: var(--bg); font: 700 8.5px/16px var(--font-ui); text-align: center; flex: none; }
+.cmt p { margin: 0; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cmt .f { display: flex; gap: 12px; margin-top: 7px; font-size: 11.5px; color: var(--ink-4); }
+.cmt .f b { color: var(--accent-ink); font-weight: 600; }
+.cmt .f button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+.cmt .f button:hover { color: var(--ink); }
+.cmt.compose { box-shadow: 0 0 0 1.5px var(--accent), var(--shadow-2); z-index: 2; }
+.cmt .ta { display: block; width: 100%; min-height: 52px; padding: 6px 8px; border: 0; border-radius: 7px; background: var(--fill); color: var(--ink); font: 12.5px/1.45 var(--font-ui); margin: 6px 0 8px; resize: none; outline: none; field-sizing: content; caret-color: var(--accent); }
+.cmt .row2 { display: flex; justify-content: flex-end; gap: 6px; }
+.btn { font: 500 13px var(--font-ui); border: 0; white-space: nowrap; flex: none; height: 30px; padding: 0 14px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill); color: var(--ink); cursor: pointer; }
+.btn:hover { background: var(--fill-2); }
+.btn.pri { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.sm { height: 24px; padding: 0 9px; font-size: 12px; border-radius: 6px; }
+.btn kbd { font: 500 11px var(--font-ui); opacity: .75; }
 
 /* Change marks: changed words struck and rewritten in green, a bar beside added blocks, "−N" where lines went. */
 .del { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1.6px; }
@@ -138,6 +186,7 @@ html::-webkit-scrollbar { display: none; }
 .map[hidden] { display: none; }
 .map .vp { position: absolute; left: 0; right: 0; top: 0; height: 46%; border-radius: 8px; background: var(--fill-2); opacity: .7; }
 .map i { position: absolute; left: 1px; right: 1px; height: 3px; border-radius: 2px; background: var(--accent); }
+.map i.c { height: 7px; width: 7px; left: .5px; border-radius: 50%; background: var(--raise); box-shadow: inset 0 0 0 2px var(--accent); }
 
 /* The dotted line where reading stopped. */
 .memory { display: flex; align-items: center; gap: 10px; margin: 26px 0 4px; font: 500 11px var(--font-ui); color: var(--ink-4); }
@@ -241,6 +290,7 @@ html::-webkit-scrollbar { display: none; }
   /* Print drops backgrounds by default, which would hide the filled checkbox. */
   .task-list-item-checkbox { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .paper { display: block; padding: 0; } .gutter, .margin { display: none; }
+  .anch { background: none; border: 0; } .num, .selpop { display: none; }
   .copy { display: none; }
   .chip { display: none; }
   .map { display: none; }

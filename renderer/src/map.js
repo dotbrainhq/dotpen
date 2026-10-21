@@ -16,8 +16,8 @@ export function viewportBox(scrollY, viewHeight, pageHeight) {
 }
 
 /**
- * The prototype's change map: a thin track on the right in place of the scrollbar, with the view's box and a
- * green tick at each change. Clicking the track jumps there; dragging the box scrolls.
+ * The prototype's change map: a thin track on the right in place of the scrollbar, with the view's box, a
+ * green tick at each change and a ringed dot at each comment. Clicking the track jumps there; dragging the box scrolls.
  */
 export function createMap(document) {
   const win = document.defaultView;
@@ -29,6 +29,7 @@ export function createMap(document) {
   map.appendChild(box);
   document.body.appendChild(map);
   let lines = [];
+  let commentLines = [];
 
   const pageHeight = () => document.documentElement.scrollHeight;
   const topOf = (line) => {
@@ -43,11 +44,16 @@ export function createMap(document) {
     box.style.top = `${view.top * 100}%`;
     box.style.height = `${view.height * 100}%`;
     map.querySelectorAll('i').forEach((tick) => tick.remove());
-    for (const position of tickPositions(lines, topOf, pageHeight())) {
-      const tick = document.createElement('i');
-      tick.style.top = `${position * 100}%`;
-      map.appendChild(tick);
-    }
+    const place = (positions, className) => {
+      for (const position of positions) {
+        const tick = document.createElement('i');
+        if (className) tick.className = className;
+        tick.style.top = `${position * 100}%`;
+        map.appendChild(tick);
+      }
+    };
+    place(tickPositions(lines, topOf, pageHeight()), '');
+    place(tickPositions(commentLines, topOf, pageHeight()), 'c');
   }
 
   let queued = false;
@@ -81,6 +87,10 @@ export function createMap(document) {
   return {
     setChanges(changeLines) {
       lines = changeLines;
+      schedule();
+    },
+    setComments(lines) {
+      commentLines = lines;
       schedule();
     },
     refresh: schedule,

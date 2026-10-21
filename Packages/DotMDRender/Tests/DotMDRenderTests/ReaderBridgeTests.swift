@@ -87,3 +87,21 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "scrollLine", "line": 12]) == .scrollLine(12))
     #expect(ReaderMessage(body: ["type": "scrollLine"]) == nil)
 }
+
+@Test func commentCommandsPassTheCommentsAndWhoWroteThem() {
+    let comment = PageComment(id: 7, line: 15, quote: "Roll out to internal keys", body: "One day is enough.", when: "now", inPrompt: true, number: 1)
+    #expect(ReaderCommand.setComments([comment], author: CommentAuthor(initial: "S", name: "You"), canComment: true).javaScript
+        == #"window.DotMD.setComments({"author":{"initial":"S","name":"You"},"canComment":true,"items":[{"body":"One day is enough.","id":7,"inPrompt":true,"line":15,"number":1,"quote":"Roll out to internal keys","when":"now"}]})"#)
+    #expect(ReaderCommand.setPanel(true).javaScript == "window.DotMD.setPanel(true)")
+    #expect(ReaderCommand.reveal(line: 15).javaScript == "window.DotMD.reveal(15)")
+}
+
+@Test func commentMessagesAreRead() {
+    #expect(ReaderMessage(body: ["type": "saveComment", "line": 14, "quote": "log every decision", "body": "Log for a week.", "id": NSNull()])
+        == .saveComment(line: 14, quote: "log every decision", body: "Log for a week.", id: nil))
+    #expect(ReaderMessage(body: ["type": "saveComment", "line": 14, "quote": "q", "body": "b", "id": 7])
+        == .saveComment(line: 14, quote: "q", body: "b", id: 7))
+    #expect(ReaderMessage(body: ["type": "resolveComment", "id": 7]) == .resolveComment(id: 7))
+    #expect(ReaderMessage(body: ["type": "copyPrompt", "line": 14, "quote": "q"]) == .copyPrompt(line: 14, quote: "q"))
+    #expect(ReaderMessage(body: ["type": "saveComment", "line": 14]) == nil)
+}
