@@ -46,6 +46,8 @@ public final class Library {
     public private(set) var folders: [FolderState] = []
     /// Whether start() has read the stored folders, so an empty list means no folders rather than not loaded yet.
     public private(set) var hasLoaded = false
+    /// Goes up whenever a comment is added, edited, resolved, sent or deleted, so views showing comments reload.
+    public private(set) var commentsVersion = 0
     /// Documents being written right now: changed within the last few seconds.
     public private(set) var writing: Set<Int64> = []
     /// Shows paths the ignore rules would hide. Changing it rescans every folder; the newest setting wins.
@@ -199,6 +201,81 @@ public final class Library {
         if let date = document.lastReadAt { return date }
         guard let hash = document.readHash else { return nil }
         return try? database.snapshotTakenAt(hash: hash)
+    }
+
+    // MARK: Comments
+
+    /// A document's comments, each with where its passage is in the text now (nil when no block shows it).
+    /// Comments whose passage moved are saved at their new lines.
+    public func comments(for document: Document, text: String) -> [PlacedComment] {
+        let stored = (try? database.comments(documentID: document.key)) ?? []
+        return stored.map { comment in
+            let range = CommentAnchor.locate(quote: comment.quote, near: comment.lineStart, in: text)
+            if let range, range.start != comment.lineStart || range.end != comment.lineEnd {
+                var moved = comment
+                moved.lineStart = range.start
+                moved.lineEnd = range.end
+                try? database.update(moved)
+                return PlacedComment(comment: moved, range: range)
+            }
+            return PlacedComment(comment: comment, range: range)
+        }
+    }
+
+    /// Saves a new comment on a passage of the text the reader shows.
+    @discardableResult
+    public func addComment(to document: Document, quote: String, line: Int, body: String, text: String) -> Comment? {
+        let block = CommentAnchor.block(containing: line, in: text)
+        let comment = Comment(
+            documentID: document.key,
+            quote: quote,
+            lineStart: block?.startLine ?? line,
+            lineEnd: block?.endLine ?? line,
+            contextHash: CommentAnchor.contextHash(of: block?.source ?? quote),
+            body: body
+        )
+        guard let saved = try? database.insert(comment) else { return nil }
+        commentsVersion += 1
+        return saved
+    }
+
+    public func editComment(_ comment: Comment, body: String) {
+        var edited = comment
+        edited.body = body
+        // An edited comment goes out again with the next Send.
+        edited.sentAt = nil
+        save(edited)
+    }
+
+    public func setResolved(_ comment: Comment, _ resolved: Bool) {
+        var changed = comment
+        changed.status = resolved ? .resolved : .open
+        save(changed)
+    }
+
+    public func markSent(_ comments: [Comment], at date: Date = .now, resolve: Bool) {
+        for comment in comments {
+            var sent = comment
+            sent.sentAt = date
+            if resolve { sent.status = .resolved }
+            try? database.update(sent)
+        }
+        commentsVersion += 1
+    }
+
+    public func deleteComment(_ comment: Comment) {
+        try? database.deleteComment(id: comment.key)
+        commentsVersion += 1
+    }
+
+    /// Every open comment in the library with its document.
+    public func openComments() -> [(Comment, Document)] {
+        (try? database.openComments()) ?? []
+    }
+
+    private func save(_ comment: Comment) {
+        try? database.update(comment)
+        commentsVersion += 1
     }
 
     public func setReadLine(_ document: Document, line: Int) {
