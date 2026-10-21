@@ -104,6 +104,17 @@ public final class LibraryDatabase: Sendable {
                 t.uniqueKey(["folderId", "relativePath"])
             }
         }
+        migrator.registerMigration("v2") { db in
+            try db.create(table: "snapshot") { t in
+                t.primaryKey("hash", .text)
+                t.column("content", .blob).notNull()
+                t.column("takenAt", .datetime).notNull()
+            }
+            try db.alter(table: "document") { t in
+                t.add(column: "readLine", .integer)
+                t.add(column: "readLineAt", .datetime)
+            }
+        }
         return migrator
     }
 
@@ -132,7 +143,10 @@ public final class LibraryDatabase: Sendable {
     }
 
     public func deleteFolder(id: Int64) throws {
-        _ = try writer.write { db in try WatchedFolder.deleteOne(db, key: id) }
+        try writer.write { db in
+            _ = try WatchedFolder.deleteOne(db, key: id)
+            try Self.pruneSnapshots(in: db)
+        }
     }
 
     // MARK: Documents
@@ -162,12 +176,20 @@ public final class LibraryDatabase: Sendable {
             // Swift compares strings by canonical equivalence and SQLite by bytes, so NFC and NFD spellings of one
             // path can both be stored. Keep one row per path and drop the twins.
             var existing = Dictionary(stored.map { ($0.relativePath, $0) }, uniquingKeysWith: { first, _ in first })
-            let kept = Set(existing.values.map(\.key))
-            for document in stored where !kept.contains(document.key) {
+            let keptKeys = Set(existing.values.map(\.key))
+            for document in stored where !keptKeys.contains(document.key) {
                 _ = try document.delete(db)
+            }
+            var kept = Set(try String.fetchAll(db, sql: "SELECT hash FROM snapshot"))
+            // A file that counts as read keeps its text, including files read before snapshots existed.
+            func keepSnapshot(of file: ScannedFile) throws {
+                guard !file.content.isEmpty, !kept.contains(file.contentHash) else { return }
+                try Self.saveSnapshot(file.content, hash: file.contentHash, in: db)
+                kept.insert(file.contentHash)
             }
             for file in files {
                 if var document = existing.removeValue(forKey: file.relativePath) {
+                    if document.readHash == file.contentHash { try keepSnapshot(of: file) }
                     guard document.differs(from: file) else { continue }
                     document.apply(file)
                     try document.update(db)
@@ -175,11 +197,13 @@ public final class LibraryDatabase: Sendable {
                     let read = firstScan || readPaths.contains(file.relativePath)
                     var document = Document(folderID: folderID, file: file, readHash: read ? file.contentHash : nil)
                     try document.insert(db)
+                    if read { try keepSnapshot(of: file) }
                 }
             }
             for document in existing.values where !unreadable.contains(document.relativePath) {
                 _ = try document.delete(db)
             }
+            try Self.pruneSnapshots(in: db)
             folder.indexedAt = .now
             try folder.update(db, columns: ["indexedAt"])
         }
@@ -191,6 +215,7 @@ public final class LibraryDatabase: Sendable {
         try writer.write { db in
             let match = Document.filter(Document.Fields.folderID == folderID && Document.Fields.relativePath == file.relativePath)
             if var document = try match.fetchOne(db) {
+                if document.readHash == file.contentHash, !file.content.isEmpty { try Self.saveSnapshot(file.content, hash: file.contentHash, in: db) }
                 if document.differs(from: file) {
                     document.apply(file)
                     try document.update(db)
@@ -199,13 +224,15 @@ public final class LibraryDatabase: Sendable {
             }
             var document = Document(folderID: folderID, file: file, readHash: readIfNew ? file.contentHash : nil)
             try document.insert(db)
+            if readIfNew, !file.content.isEmpty { try Self.saveSnapshot(file.content, hash: file.contentHash, in: db) }
             return document
         }
     }
 
     public func deleteDocument(folderID: Int64, relativePath: String) throws {
-        _ = try writer.write { db in
-            try Document.filter(Document.Fields.folderID == folderID && Document.Fields.relativePath == relativePath).deleteAll(db)
+        try writer.write { db in
+            _ = try Document.filter(Document.Fields.folderID == folderID && Document.Fields.relativePath == relativePath).deleteAll(db)
+            try Self.pruneSnapshots(in: db)
         }
     }
 
@@ -216,6 +243,34 @@ public final class LibraryDatabase: Sendable {
             guard var document = try Document.fetchOne(db, key: documentID) else { return nil }
             document.readHash = document.contentHash
             document.lastReadAt = date
+            try document.update(db)
+            try Self.pruneSnapshots(in: db)
+            return document
+        }
+    }
+
+    /// Marks a document read at the bytes the person saw, and keeps them as the snapshot the next diff starts from.
+    @discardableResult
+    public func markRead(documentID: Int64, content: Data, at date: Date = .now) throws -> Document? {
+        try writer.write { db in
+            guard var document = try Document.fetchOne(db, key: documentID) else { return nil }
+            let hash = Snapshots.hash(content)
+            try Self.saveSnapshot(content, hash: hash, in: db)
+            document.readHash = hash
+            document.lastReadAt = date
+            try document.update(db)
+            try Self.pruneSnapshots(in: db)
+            return document
+        }
+    }
+
+    /// Returns the updated document, or nil when there is no document with that id.
+    @discardableResult
+    public func setReadLine(documentID: Int64, line: Int, at date: Date = .now) throws -> Document? {
+        try writer.write { db in
+            guard var document = try Document.fetchOne(db, key: documentID) else { return nil }
+            document.readLine = line
+            document.readLineAt = date
             try document.update(db)
             return document
         }
@@ -228,6 +283,7 @@ public final class LibraryDatabase: Sendable {
             guard var document = try Document.fetchOne(db, key: documentID) else { return nil }
             document.readHash = nil
             try document.update(db)
+            try Self.pruneSnapshots(in: db)
             return document
         }
     }
@@ -242,4 +298,27 @@ public final class LibraryDatabase: Sendable {
             return document
         }
     }
+    // MARK: Snapshots
+
+    /// The text stored under a hash, or nil when no document points at it any more.
+    public func snapshotText(hash: String) throws -> String? {
+        let data = try writer.read { db in
+            try Data.fetchOne(db, sql: "SELECT content FROM snapshot WHERE hash = ?", arguments: [hash])
+        }
+        return data.flatMap(Snapshots.decompress).map { String(decoding: $0, as: UTF8.self) }
+    }
+
+    /// Stores bytes under their hash unless that snapshot is already there.
+    private static func saveSnapshot(_ content: Data, hash: String, in db: Database) throws {
+        try db.execute(
+            sql: "INSERT OR IGNORE INTO snapshot (hash, content, takenAt) VALUES (?, ?, ?)",
+            arguments: [hash, Snapshots.compress(content), Date.now]
+        )
+    }
+
+    /// Deletes the snapshots no document points at.
+    private static func pruneSnapshots(in db: Database) throws {
+        try db.execute(sql: "DELETE FROM snapshot WHERE hash NOT IN (SELECT readHash FROM document WHERE readHash IS NOT NULL)")
+    }
+
 }

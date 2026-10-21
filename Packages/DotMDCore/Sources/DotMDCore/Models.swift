@@ -71,12 +71,16 @@ public struct ScannedFile: Equatable, Sendable {
     public var contentHash: String
     public var modifiedAt: Date
 
-    public init(relativePath: String, title: String?, kind: DocumentKind, contentHash: String, modifiedAt: Date) {
+    /// The bytes the scanner read. A file that counts as read when it's stored gets them as its snapshot.
+    public var content: Data
+
+    public init(relativePath: String, title: String?, kind: DocumentKind, contentHash: String, modifiedAt: Date, content: Data = Data()) {
         self.relativePath = relativePath
         self.title = title
         self.kind = kind
         self.contentHash = contentHash
         self.modifiedAt = modifiedAt
+        self.content = content
     }
 }
 
@@ -95,11 +99,14 @@ public struct Document: Codable, Equatable, Identifiable, Sendable, FetchableRec
     public var readHash: String?
     public var lastReadAt: Date?
     public var pinned: Bool
+    /// The source line at the top of the reader when the person last left the file, and when that was.
+    public var readLine: Int?
+    public var readLineAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
         case folderID = "folderId"
-        case relativePath, title, kind, contentHash, modifiedAt, readHash, lastReadAt, pinned
+        case relativePath, title, kind, contentHash, modifiedAt, readHash, lastReadAt, pinned, readLine, readLineAt
     }
 
     enum Fields {
@@ -118,6 +125,8 @@ public struct Document: Codable, Equatable, Identifiable, Sendable, FetchableRec
         self.readHash = readHash
         lastReadAt = nil
         pinned = false
+        readLine = nil
+        readLineAt = nil
     }
 
     public mutating func didInsert(_ inserted: InsertionSuccess) {

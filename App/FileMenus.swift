@@ -18,7 +18,7 @@ struct FileMenu: View {
             if document.readState == .read {
                 Button("Mark as unread") { library.markUnread(document) }
             } else {
-                Button("Mark as read") { library.markRead(document) }
+                Button("Mark as read") { Task { await library.markRead(document) } }
             }
             Button(document.pinned ? "Unpin" : "Pin to top") { library.setPinned(document, !document.pinned) }
             Divider()

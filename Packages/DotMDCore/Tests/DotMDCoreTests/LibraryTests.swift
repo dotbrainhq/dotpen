@@ -74,7 +74,7 @@ private func makeLibrary() throws -> Library {
     var document = try #require(library.folders.first?.documents.first)
     #expect(document.readState == .changed)
     #expect(library.folders.first?.unreadCount == 1)
-    library.markRead(document)
+    await library.markRead(document)
     document = try #require(library.folders.first?.documents.first)
     #expect(document.readState == .read)
     library.markUnread(document)

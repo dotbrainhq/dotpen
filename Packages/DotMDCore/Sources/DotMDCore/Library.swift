@@ -170,8 +170,31 @@ public final class Library {
         return nil
     }
 
-    public func markRead(_ document: Document) {
-        if let updated = try? database.markRead(documentID: document.key) { put(updated) }
+    /// Marks a document read at its text on disk now, and keeps that text for the next diff.
+    public func markRead(_ document: Document) async {
+        guard let url = url(for: document) else { return }
+        let data = await Task.detached { try? Data(contentsOf: url) }.value
+        let updated = if let data {
+            try? database.markRead(documentID: document.key, content: data)
+        } else {
+            try? database.markRead(documentID: document.key)
+        }
+        if let updated { put(updated) }
+    }
+
+    /// Marks a document read at the text the reader showed, so the snapshot is exactly what the person saw.
+    public func markRead(_ document: Document, text: String) {
+        if let updated = try? database.markRead(documentID: document.key, content: Data(text.utf8)) { put(updated) }
+    }
+
+    /// The text the person last read, when DotMD kept it.
+    public func lastReadText(for document: Document) -> String? {
+        guard let hash = document.readHash else { return nil }
+        return try? database.snapshotText(hash: hash)
+    }
+
+    public func setReadLine(_ document: Document, line: Int) {
+        if let updated = try? database.setReadLine(documentID: document.key, line: line) { put(updated) }
     }
 
     public func markUnread(_ document: Document) {

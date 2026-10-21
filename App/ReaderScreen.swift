@@ -166,7 +166,7 @@ struct ReaderScreen: View {
     /// Reading a file in DotMD marks it read, including after it changes while open.
     private func markReadIfNeeded(_ state: ReadState?) {
         guard let state, state != .read, let documentKey, let document = library.document(key: documentKey) else { return }
-        library.markRead(document)
+        library.markRead(document, text: text)
     }
 
     /// The watched folder holding this file: relative images may come from anywhere inside it.

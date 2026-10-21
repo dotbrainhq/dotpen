@@ -56,8 +56,9 @@ public enum FolderScanner {
             relativePath: relativePath,
             title: MarkdownSummary.title(in: String(decoding: data, as: UTF8.self)),
             kind: .detect(relativePath: relativePath),
-            contentHash: SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined(),
-            modifiedAt: modified
+            contentHash: Snapshots.hash(data),
+            modifiedAt: modified,
+            content: data
         )
     }
 
