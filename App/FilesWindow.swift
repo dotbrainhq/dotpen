@@ -9,6 +9,7 @@ import SwiftUI
 /// buttons in a title bar above it.
 struct FilesWindow: View {
     @Environment(Library.self) private var library
+    @Environment(FilesNavigator.self) private var navigator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: Int64?
     @SceneStorage("filesSidebarVisible") private var sidebarVisible = true
@@ -59,6 +60,12 @@ struct FilesWindow: View {
             WindowButtons(closeCenter: sidebarVisible && !isFirstLaunch ? CGPoint(x: 30, y: 30) : CGPoint(x: 22, y: 26))
         }
         .environment(\.filesChrome, chrome)
+        .onChange(of: navigator.requested, initial: true) { _, requested in
+            // The menu bar item asked for a file.
+            guard let requested else { return }
+            selection = requested
+            navigator.requested = nil
+        }
         .focusedSceneValue(\.toggleFiles, toggleFiles)
         .frame(minWidth: 760, minHeight: 480)
     }

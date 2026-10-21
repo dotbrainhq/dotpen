@@ -6,6 +6,7 @@ struct DotMDApp: App {
     @State private var library: Library
     @State private var bridge: AgentBridge
     @State private var activity: AgentActivity
+    @State private var navigator = FilesNavigator()
 
     init() {
         let library = Library.makeDefault()
@@ -17,6 +18,7 @@ struct DotMDApp: App {
     var body: some Scene {
         Window("DotMD", id: "files") {
             FilesWindow()
+                .environment(navigator)
                 .environment(library)
                 .environment(bridge)
                 .environment(activity)
@@ -53,6 +55,18 @@ struct DotMDApp: App {
         .windowResizability(.contentSize)
         .defaultPosition(.center)
         .restorationBehavior(.disabled)
+
+        // The Trail mark in the menu bar: who's writing, what's new, and a way to pause watching.
+        MenuBarExtra {
+            MenuBarMenu()
+                .environment(library)
+                .environment(activity)
+                .environment(navigator)
+        } label: {
+            Image("MenuBarIcon")
+                .accessibilityLabel("DotMD")
+        }
+        .menuBarExtraStyle(.menu)
 
         DocumentGroup(viewing: MarkdownFile.self) { configuration in
             ReaderScreen(text: configuration.document.text, fileURL: configuration.fileURL)
