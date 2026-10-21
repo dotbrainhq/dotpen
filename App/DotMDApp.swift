@@ -37,6 +37,7 @@ struct DotMDApp: App {
         .commands {
             FilesCommands()
             SettingsCommands()
+            PaletteCommands()
         }
 
         // A plain window rather than the Settings scene, which keeps a title bar the prototype doesn't have.

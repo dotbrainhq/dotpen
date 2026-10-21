@@ -36,6 +36,10 @@ struct ReaderScreen: View {
     @State private var following = true
     /// The agent that just stopped writing this file, for the finished pill, until it's dismissed.
     @State private var finishedBy: String?
+    /// The palette or the shortcuts in a document window. The Files window keeps its own.
+    @State private var overlay: WindowOverlay?
+    /// The file's headings, for the palette.
+    @State private var headings: [DocumentHeading] = []
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
@@ -51,6 +55,11 @@ struct ReaderScreen: View {
             // Names the window in the Window menu and Mission Control.
             .navigationTitle(displayTitle)
             .focusedSceneValue(\.documentExporter, exporter)
+            .focusedSceneValue(\.readerCommands, readerCommands)
+            .task(id: text) {
+                let current = text
+                headings = await Task.detached { DocumentHeadings.headings(in: current) }.value
+            }
             .preferredColorScheme(windowScheme)
             .onAppear(perform: start)
             .task(id: fileURL) { await watch() }
@@ -132,6 +141,10 @@ struct ReaderScreen: View {
                         .transition(.opacity)
                     }
                 }
+                .windowOverlays($overlay) { document, _ in
+                    if let url = library.url(for: document) { FileActions.openInNewWindow(url) }
+                }
+                .focusedSceneValue(\.showOverlay) { overlay = $0 }
                 .toolbar(removing: .title)
                 .toolbar {
                     titleItem
@@ -166,6 +179,31 @@ struct ReaderScreen: View {
                 .overlay(alignment: .bottom) { agentPill }
         }
         .overlay(alignment: .trailing) { panel }
+    }
+
+    /// What this reader offers the palette and the menus.
+    private var readerCommands: ReaderCommands {
+        var markRead: (() -> ())?
+        if let document = libraryDocument, document.readState != .read {
+            let current = text
+            markRead = { library.markRead(document, text: current) }
+        }
+        var send: (() -> ())?
+        var copyPrompt: (() -> ())?
+        if !inPrompt.isEmpty {
+            send = openSend
+            // Built when used: the prompt parses the file for its change notes.
+            copyPrompt = { copy(prompt(includeChanges: true)) }
+        }
+        let exporter = exporter
+        return ReaderCommands(
+            headings: headings,
+            reveal: { line in controller.send(.reveal(line: line)) },
+            send: send,
+            markRead: markRead,
+            copyPrompt: copyPrompt,
+            exportPDF: { exporter.export(as: .pdf) }
+        )
     }
 
     // MARK: Agents
@@ -573,6 +611,8 @@ struct ReaderScreen: View {
         case let .resolveComment(id):
             guard let existing = comments.first(where: { $0.id == id })?.comment else { return }
             library.setResolved(existing, true)
+        case .showShortcuts:
+            if let filesChrome { filesChrome.showOverlay(.shortcuts) } else { overlay = .shortcuts }
         case .toggleFollow:
             toggleFollow()
         case let .composing(active):

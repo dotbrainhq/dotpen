@@ -18,6 +18,8 @@ struct FilesWindow: View {
     @State private var filter = FileFilter()
     /// The Send sheet, over the whole window with the scrim behind it.
     @State private var sheet: AnyView?
+    /// The palette or the shortcuts, over the whole window.
+    @State private var overlay: WindowOverlay?
 
     /// The prototype's sidebar column.
     static let sidebarWidth: CGFloat = 272
@@ -66,7 +68,15 @@ struct FilesWindow: View {
             selection = requested
             navigator.requested = nil
         }
+        .windowOverlays($overlay, commands: windowCommands) { document, newWindow in
+            if newWindow, let url = library.url(for: document) {
+                FileActions.openInNewWindow(url)
+            } else {
+                selection = document.key
+            }
+        }
         .focusedSceneValue(\.toggleFiles, toggleFiles)
+        .focusedSceneValue(\.showOverlay) { overlay = $0 }
         .frame(minWidth: 760, minHeight: 480)
     }
 
@@ -77,7 +87,7 @@ struct FilesWindow: View {
     }
 
     private var chrome: FilesChrome {
-        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles, showSheet: showSheet)
+        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles, showSheet: showSheet) { overlay = $0 }
     }
 
     /// The prototype's `.side-in`: a rounded panel 8 points in from the window's top, left and bottom, padded
@@ -143,6 +153,14 @@ struct FilesWindow: View {
         } else {
             FileActions.openInNewWindow(url)
         }
+    }
+
+    /// The palette's commands that belong to this window.
+    private var windowCommands: [PaletteCommand] {
+        [
+            PaletteCommand(title: sidebarVisible ? "Hide file list" : "Show file list", shortcut: "⌥⌘S", action: toggleFiles),
+            PaletteCommand(title: "Watch a folder…", action: addFolder),
+        ]
     }
 
     private func addFolder() {

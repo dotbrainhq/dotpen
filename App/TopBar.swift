@@ -7,6 +7,8 @@ struct FilesChrome {
     let toggleSidebar: () -> ()
     /// Shows a sheet over the whole window, as the prototype's Send sheet is, or takes it away when nil.
     let showSheet: (AnyView?) -> ()
+    /// Shows the palette or the keyboard shortcuts over the whole window.
+    let showOverlay: (WindowOverlay) -> ()
 }
 
 extension EnvironmentValues {
