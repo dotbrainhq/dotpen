@@ -17,3 +17,7 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - First launch finds the projects in your code folder by their CLAUDE.md, AGENTS.md or .cursor files and offers to watch them.
 - Raw HTML in Markdown renders the way GitHub does. Images linked by relative path load from the document's folder, and relative Markdown links open in DotMD.
 - Settings with a Folders pane to add, remove and reconnect watched folders.
+- The reader page follows DotMD's design: a status line from front matter, the outline in the right margin, and task boxes.
+- Changes since you last read a file: changed words struck and rewritten in green, a bar beside added blocks, and a tag where lines were removed. A chip counts them, Next (or N) walks through them, and Mark read clears them.
+- A change map on the scrollbar and a dotted line where you stopped reading.
+- Live writing: blocks an agent writes into an open file glow as they arrive.
