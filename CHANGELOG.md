@@ -25,3 +25,7 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - A comments panel with open and resolved comments, and Copy as prompt for any selection.
 - Send to agent turns your comments into a prompt with the exact lines they point at, copies it, and marks them sent.
 - The agent bridge: a local MCP server your agents use to read your comments and resolve them. Settings > Integrations has setup for Claude Code, Codex, Gemini CLI, Grok CLI and Cursor.
+- DotMD names the agent that wrote a file, from Claude Code and Codex session logs you allow in Settings > Integrations.
+- While an agent writes the open file, a pill follows along; when it stops, Review Changes takes you to what changed.
+- A banner when an agent writes a new file, and "Connected to Claude Code in api-gateway" in the Send sheet.
+- A menu bar item with what's being written, new and changed files, and Pause watching for 1 hour.
