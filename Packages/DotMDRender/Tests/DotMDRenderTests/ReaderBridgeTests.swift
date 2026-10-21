@@ -63,3 +63,27 @@ import Testing
 @Test func layoutCommandPassesTheLayoutName() {
     #expect(ReaderCommand.setLayout(.document).javaScript == #"window.DotMD.setLayout("document")"#)
 }
+
+private struct SampleChanges: Encodable, Sendable {
+    let added: [Int]
+}
+
+@Test func marksCommandCarriesTheChangesAndTheTime() {
+    let command = ReaderCommand.applyMarks(changes: SampleChanges(added: [9]), since: "since 1:02 PM")
+    #expect(command.javaScript == #"window.DotMD.applyMarks({"changes":{"added":[9]},"since":"since 1:02 PM"})"#)
+}
+
+@Test func changeCommandsPassTheirValues() {
+    #expect(ReaderCommand.clearMarks(fade: true).javaScript == "window.DotMD.clearMarks(true)")
+    #expect(ReaderCommand.setMemory(line: 42, label: "You stopped reading here at 1:02 PM").javaScript
+        == #"window.DotMD.setMemory({"label":"You stopped reading here at 1:02 PM","line":42})"#)
+    #expect(ReaderCommand.setMemory(line: nil, label: "").javaScript == #"window.DotMD.setMemory({"label":""})"#)
+    #expect(ReaderCommand.markLive(lines: [5, 9]).javaScript == "window.DotMD.markLive([5,9])")
+    #expect(ReaderCommand.setWriting(true, lastLine: 9).javaScript == #"window.DotMD.setWriting({"lastLine":9,"writing":true})"#)
+}
+
+@Test func changeMessagesAreRead() {
+    #expect(ReaderMessage(body: ["type": "markRead"]) == .markRead)
+    #expect(ReaderMessage(body: ["type": "scrollLine", "line": 12]) == .scrollLine(12))
+    #expect(ReaderMessage(body: ["type": "scrollLine"]) == nil)
+}

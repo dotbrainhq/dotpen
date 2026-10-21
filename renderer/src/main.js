@@ -2,11 +2,59 @@ import { renderDocument, escapeHtml } from './document.js';
 import { createSanitizer } from './sanitize.js';
 import { rewriteLocalImages } from './assets.js';
 import { buildOutline } from './outline.js';
+import { applyMarks, fadeMarks, removeMarks, blockAt } from './marks.js';
+import { showChip, nextChangeLine, revealBlock } from './chip.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
 const sanitize = createSanitizer(window);
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+// The last marks Swift sent. Every render puts them back, so a reload keeps them.
+let marks = null;
+
+function changeCount(changes) {
+  return (changes.added?.length ?? 0) + (changes.changed?.length ?? 0) + (changes.removed?.length ?? 0);
+}
+
+function changeLines(changes) {
+  const lines = [
+    ...(changes.added ?? []).map((c) => c.start),
+    ...(changes.changed ?? []).map((c) => c.start),
+    ...(changes.removed ?? []).map((r) => Math.max(r.afterLine, 1)),
+  ];
+  return [...new Set(lines)].sort((a, b) => a - b);
+}
+
+// A revealed block sits 24 points under the top, so Next looks below that for the one after it.
+function nextChange() {
+  if (!marks) return;
+  const doc = document.getElementById('doc');
+  const topOf = (line) => {
+    const block = blockAt(doc, line);
+    return block ? block.getBoundingClientRect().top + window.scrollY : Infinity;
+  };
+  const line = nextChangeLine(changeLines(marks.changes), window.scrollY + 28, topOf);
+  if (line) revealBlock(doc, line, { reduceMotion: reduceMotion() });
+}
+
+// DotMD's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
+function decorate(doc) {
+  if (!marks) return;
+  applyMarks(doc, marks.changes);
+  showChip(doc, { count: changeCount(marks.changes), since: marks.since }, {
+    onNext: nextChange,
+    onMarkRead: () => post({ type: 'markRead' }),
+  });
+}
+
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'n' && event.key !== 'N') return;
+  if (event.metaKey || event.ctrlKey || event.altKey || !marks) return;
+  if (event.target.closest?.('input, textarea, [contenteditable]')) return;
+  event.preventDefault();
+  nextChange();
+});
 
 function applyOptions(options = {}) {
   root.dataset.size = options.size ?? 'medium';
@@ -166,10 +214,27 @@ window.DotMD = {
     }
     placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
+    decorate(doc);
     buildOutline(doc, document.getElementById('margin'), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
     window.scrollTo(0, y);
     await renderDiagrams(doc);
     post({ type: 'rendered' });
+  },
+  applyMarks({ changes, since }) {
+    marks = { changes, since };
+    decorate(document.getElementById('doc'));
+  },
+  clearMarks(fade) {
+    const doc = document.getElementById('doc');
+    marks = null;
+    const chip = doc.querySelector('.chip');
+    if (!fade) {
+      removeMarks(doc);
+      chip?.remove();
+      return;
+    }
+    chip?.classList.add('mark-out');
+    fadeMarks(doc, { reduceMotion: reduceMotion(), done: () => chip?.remove() });
   },
   setLayout(layout) {
     root.dataset.layout = layout === 'document' ? 'document' : 'files';
@@ -180,7 +245,8 @@ window.DotMD = {
   },
   exportHTML() {
     const clone = document.getElementById('doc').cloneNode(true);
-    clone.querySelectorAll('button.copy').forEach((b) => b.remove());
+    removeMarks(clone);
+    clone.querySelectorAll('[data-dotmd-ui], button.copy').forEach((el) => el.remove());
     return clone.innerHTML;
   },
 };

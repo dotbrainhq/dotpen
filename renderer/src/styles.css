@@ -67,8 +67,9 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 :root[data-layout="document"] .paper { grid-template-columns: 170px minmax(0, 600px) 250px; }
 :root[data-width="narrow"] .paper { grid-template-columns: 110px minmax(0, 480px) 240px; }
 :root[data-width="wide"] .paper { grid-template-columns: 70px minmax(0, 680px) 200px; }
-/* Narrower than the three columns: keep room for the change tags, drop the margin. */
-@media (max-width: 919px) {
+/* Too narrow for the margin: keep room for the change tags, drop the margin. The text column shrinks before this,
+   so a scrollbar appearing doesn't flip the layout. */
+@media (max-width: 829px) {
   .paper, :root[data-layout] .paper, :root[data-width] .paper { grid-template-columns: 44px minmax(0, 1fr) 28px; }
   .margin { display: none; }
 }
@@ -102,6 +103,33 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .toc button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
 .toc button:first-child { color: var(--ink); font-weight: 500; }
 .toc button:hover { color: var(--ink); }
+
+/* Change marks: changed words struck and rewritten in green, a bar beside added blocks, "−N" where lines went. */
+.del { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1.6px; }
+.ins { color: var(--accent-ink); background: linear-gradient(transparent 62%, var(--accent-wash) 62%); }
+.added, .has-gut { position: relative; }
+.added::before { content: ""; position: absolute; left: -12px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px; background: var(--accent); }
+.gut { position: absolute; right: calc(100% + 18px); top: 4px; font: 600 10.5px/1.3 var(--font-ui); color: var(--accent-ink); white-space: nowrap; border: 0; background: none; padding: 0; cursor: pointer; }
+.gut.rm { top: auto; bottom: -11px; padding: 1px 6px; font-size: 10px; font-weight: 500; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--accent-line); background: var(--bg); }
+.gut.rm.top { top: -11px; bottom: auto; }
+.removed { margin: 4px 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--fill); font: 13px/1.5 var(--font-mono); color: var(--ink-4); white-space: pre-wrap; text-decoration: line-through; text-decoration-color: var(--accent); }
+
+/* Mark read: marks fade top to bottom. fadeMarks sets the delay and duration on each mark. */
+.del, .ins, .gut, .removed, .added::before { transition-property: opacity, color; transition-duration: var(--mark-duration, 220ms); transition-delay: var(--mark-delay, 0ms); transition-timing-function: cubic-bezier(.2, .8, .2, 1); }
+.del.mark-out, .gut.mark-out, .removed.mark-out, .added.mark-out::before { opacity: 0; }
+.ins.mark-out { color: inherit; background: none; }
+
+/* The change chip under the status line. */
+.chip { display: inline-flex; align-items: center; gap: 2px; font-family: var(--font-ui); font-size: 12px; margin-bottom: 18px; border-radius: 999px; background: var(--accent-wash); padding: 3px 4px 3px 10px; color: var(--accent-ink); transition: opacity 220ms cubic-bezier(.2, .8, .2, 1); }
+.chip b { font-weight: 600; margin-right: 5px; }
+.chip .since { color: var(--ink-3); margin-right: 4px; }
+.chip button { font: inherit; font-weight: 500; border: 0; background: none; padding: 3px 9px; border-radius: 999px; color: var(--accent-ink); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.chip button:hover { background: rgba(0, 132, 80, 0.12); }
+.chip button kbd { font: 600 10.5px var(--font-ui); padding: 0 4px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.chip.mark-out { opacity: 0; }
+/* Next outlines the block it lands on, then lets go. */
+.target-flash { box-shadow: 0 0 0 2px var(--accent-line); border-radius: 6px; }
+[data-line] { transition: box-shadow 600ms cubic-bezier(.2, .8, .2, 1); }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
@@ -178,6 +206,7 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 
 @media (prefers-reduced-motion: reduce) {
   .copy { transition: none; }
+  [data-line], .chip { transition: none; }
 }
 
 /* Paper is always white, whatever page color the window uses. */
@@ -191,6 +220,8 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
   .task-list-item-checkbox { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .paper { display: block; padding: 0; } .gutter, .margin { display: none; }
   .copy { display: none; }
+  .chip { display: none; }
+  .del, .del-gap, .gut, .removed { display: none; } .ins { color: inherit; background: none; } .added::before { display: none; }
   :root[data-paper] .mermaid-block .diagram-light { display: block; }
   :root[data-paper] .mermaid-block .diagram-dark { display: none; }
   .code-block, .mermaid-block, .doc table { break-inside: avoid; }

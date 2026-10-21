@@ -14,6 +14,8 @@ struct ReaderScreen: View {
     @AppStorage("readingOptions") private var options = ReadingOptions()
     @State private var showingReadingOptions = false
     @State private var documentKey: Int64?
+    /// What changed since the person last read the file, as marked on the page now.
+    @State private var changes = ChangeSet()
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
         self.fileURL = fileURL
@@ -163,10 +165,39 @@ struct ReaderScreen: View {
         documentKey = document.key
     }
 
-    /// Reading a file in DotMD marks it read, including after it changes while open.
+    /// A new file is read once it's open. A changed file stays changed, with its marks, until Mark read.
     private func markReadIfNeeded(_ state: ReadState?) {
-        guard let state, state != .read, let documentKey, let document = library.document(key: documentKey) else { return }
-        library.markRead(document, text: text)
+        guard let state, let documentKey, let document = library.document(key: documentKey) else { return }
+        switch state {
+        case .new:
+            library.markRead(document, text: text)
+        case .changed:
+            Task { await refreshMarks() }
+        case .read:
+            guard !changes.isEmpty else { return }
+            changes = ChangeSet()
+            controller.send(.clearMarks(fade: true))
+        }
+    }
+
+    /// Diffs the file against the text last read and marks the page. A changed file with nothing to show, because
+    /// DotMD has no copy of what was read or only front matter changed, is marked read instead.
+    private func refreshMarks() async {
+        guard let document = libraryDocument, document.readState == .changed else { return }
+        guard let old = library.lastReadText(for: document) else {
+            library.markRead(document, text: text)
+            return
+        }
+        let current = text
+        let result = await Task.detached { ChangeDiff.changes(from: old, to: current) }.value
+        // A reload that landed meanwhile starts its own diff.
+        guard !Task.isCancelled, current == text else { return }
+        if result.isEmpty {
+            library.markRead(document, text: current)
+            return
+        }
+        changes = result
+        controller.send(.applyMarks(changes: result, since: ReadingLabels.since(document.lastReadAt)))
     }
 
     /// The watched folder holding this file: relative images may come from anywhere inside it.
@@ -207,6 +238,7 @@ struct ReaderScreen: View {
         guard newText != text else { return }
         text = newText
         controller.send(.render(markdown: newText, options: options))
+        await refreshMarks()
     }
 
     private func handle(_ message: ReaderMessage) {
@@ -222,6 +254,9 @@ struct ReaderScreen: View {
         case let .copyText(value):
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(value, forType: .string)
+        case .markRead:
+            guard let document = libraryDocument else { return }
+            library.markRead(document, text: text)
         default:
             break
         }
