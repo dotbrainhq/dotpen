@@ -221,7 +221,7 @@ struct ReaderScreen: View {
             return
         }
         changes = result
-        controller.send(.applyMarks(changes: result, since: ReadingLabels.since(document.lastReadAt)))
+        controller.send(.applyMarks(changes: result, since: ReadingLabels.since(library.lastReadDate(for: document))))
     }
 
     /// Shows where reading stopped last time, once per visit. Nothing shows when it stopped at the top.
