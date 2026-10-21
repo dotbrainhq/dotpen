@@ -94,6 +94,8 @@ private struct SampleChanges: Encodable, Sendable {
         == #"window.DotMD.setComments({"author":{"initial":"S","name":"You"},"canComment":true,"items":[{"body":"One day is enough.","id":7,"inPrompt":true,"line":15,"number":1,"quote":"Roll out to internal keys","when":"now"}]})"#)
     #expect(ReaderCommand.setPanel(true).javaScript == "window.DotMD.setPanel(true)")
     #expect(ReaderCommand.reveal(line: 15).javaScript == "window.DotMD.reveal(15)")
+    #expect(ReaderCommand.follow(line: 22).javaScript == "window.DotMD.follow(22)")
+    #expect(ReaderCommand.nextChange.javaScript == "window.DotMD.nextChange()")
 }
 
 @Test func commentMessagesAreRead() {
@@ -106,4 +108,5 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "saveComment", "line": 14]) == nil)
     #expect(ReaderMessage(body: ["type": "composing", "active": true]) == .composing(true))
     #expect(ReaderMessage(body: ["type": "composing"]) == nil)
+    #expect(ReaderMessage(body: ["type": "toggleFollow"]) == .toggleFollow)
 }

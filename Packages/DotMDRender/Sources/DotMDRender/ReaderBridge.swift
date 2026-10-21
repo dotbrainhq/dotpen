@@ -63,6 +63,10 @@ public enum ReaderCommand: Sendable {
     case setPanel(Bool)
     /// Scrolls a block into view and flashes it, for a comment chosen in the panel.
     case reveal(line: Int)
+    /// Keeps the block an agent just wrote in view, while the person follows along.
+    case follow(line: Int)
+    /// Goes to the next change, as N does. Review Changes in the finished pill uses it.
+    case nextChange
 
     public var javaScript: String {
         switch self {
@@ -88,6 +92,10 @@ public enum ReaderCommand: Sendable {
             return "window.DotMD.setPanel(\(open))"
         case let .reveal(line):
             return "window.DotMD.reveal(\(line))"
+        case let .follow(line):
+            return "window.DotMD.follow(\(line))"
+        case .nextChange:
+            return "window.DotMD.nextChange()"
         }
     }
 
@@ -155,6 +163,8 @@ public enum ReaderMessage: Equatable, Sendable {
     case copyPrompt(line: Int, quote: String)
     /// A comment composer gained or lost focus. While it has it, ⌘↩ belongs to the composer.
     case composing(Bool)
+    /// F on the page: start or stop following the agent writing the file.
+    case toggleFollow
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -181,6 +191,7 @@ public enum ReaderMessage: Equatable, Sendable {
         case "resolveComment":
             guard let id = (dict["id"] as? NSNumber)?.int64Value else { return nil }
             self = .resolveComment(id: id)
+        case "toggleFollow": self = .toggleFollow
         case "composing":
             guard let active = dict["active"] as? Bool else { return nil }
             self = .composing(active)

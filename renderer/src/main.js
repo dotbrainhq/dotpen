@@ -86,6 +86,9 @@ document.addEventListener('keydown', (event) => {
   } else if ((event.key === 'c' || event.key === 'C') && selected && canComment()) {
     event.preventDefault();
     compose(selected);
+  } else if (event.key === 'f' || event.key === 'F') {
+    // Following only means something while an agent writes the file; Swift ignores it otherwise.
+    post({ type: 'toggleFollow' });
   }
 });
 
@@ -396,6 +399,14 @@ window.DotMD = {
   // A comment chosen in the panel: its passage comes into view and flashes, as Next does for a change.
   reveal(line) {
     revealBlock(document.getElementById('doc'), line, { reduceMotion: reduceMotion() });
+  },
+  // Following an agent: the block it just wrote stays in view, without the flash Next uses.
+  follow(line) {
+    const block = blockAt(document.getElementById('doc'), line);
+    block?.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' });
+  },
+  nextChange() {
+    nextChange();
   },
   setPanel(open) {
     root.dataset.panel = open ? 'on' : 'off';
