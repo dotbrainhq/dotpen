@@ -102,6 +102,21 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .toc button { font: inherit; color: inherit; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
 .toc button:first-child { color: var(--ink); font-weight: 500; }
 .toc button:hover { color: var(--ink); }
+
+/* Change marks: changed words struck and rewritten in green, a bar beside added blocks, "−N" where lines went. */
+.del { color: var(--ink-4); text-decoration: line-through; text-decoration-color: var(--accent); text-decoration-thickness: 1.6px; }
+.ins { color: var(--accent-ink); background: linear-gradient(transparent 62%, var(--accent-wash) 62%); }
+.added, .has-gut { position: relative; }
+.added::before { content: ""; position: absolute; left: -12px; top: 5px; bottom: 5px; width: 2px; border-radius: 2px; background: var(--accent); }
+.gut { position: absolute; right: calc(100% + 18px); top: 4px; font: 600 10.5px/1.3 var(--font-ui); color: var(--accent-ink); white-space: nowrap; border: 0; background: none; padding: 0; cursor: pointer; }
+.gut.rm { top: auto; bottom: -11px; padding: 1px 6px; font-size: 10px; font-weight: 500; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--accent-line); background: var(--bg); }
+.gut.rm.top { top: -11px; bottom: auto; }
+.removed { margin: 4px 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--fill); font: 13px/1.5 var(--font-mono); color: var(--ink-4); white-space: pre-wrap; text-decoration: line-through; text-decoration-color: var(--accent); }
+
+/* Mark read: marks fade top to bottom. fadeMarks sets the delay and duration on each mark. */
+.del, .ins, .gut, .removed, .added::before { transition-property: opacity, color; transition-duration: var(--mark-duration, 220ms); transition-delay: var(--mark-delay, 0ms); transition-timing-function: cubic-bezier(.2, .8, .2, 1); }
+.del.mark-out, .gut.mark-out, .removed.mark-out, .added.mark-out::before { opacity: 0; }
+.ins.mark-out { color: inherit; background: none; }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
@@ -191,6 +206,7 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
   .task-list-item-checkbox { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .paper { display: block; padding: 0; } .gutter, .margin { display: none; }
   .copy { display: none; }
+  .del, .del-gap, .gut, .removed { display: none; } .ins { color: inherit; background: none; } .added::before { display: none; }
   :root[data-paper] .mermaid-block .diagram-light { display: block; }
   :root[data-paper] .mermaid-block .diagram-dark { display: none; }
   .code-block, .mermaid-block, .doc table { break-inside: avoid; }
