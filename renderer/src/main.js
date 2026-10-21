@@ -4,6 +4,8 @@ import { rewriteLocalImages } from './assets.js';
 import { buildOutline } from './outline.js';
 import { applyMarks, fadeMarks, removeMarks, blockAt } from './marks.js';
 import { showChip, nextChangeLine, revealBlock } from './chip.js';
+import { createMap } from './map.js';
+import { showMemory, topLine } from './memory.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -12,6 +14,23 @@ const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 // The last marks Swift sent. Every render puts them back, so a reload keeps them.
 let marks = null;
+const map = createMap(document);
+// The line where reading stopped last time, put back after every render.
+let memory = null;
+let lastSentLine = null;
+let scrollTimer = null;
+
+// The line at the top of the view, sent once scrolling pauses, so Swift can remember where reading stopped.
+window.addEventListener('scroll', () => {
+  clearTimeout(scrollTimer);
+  scrollTimer = setTimeout(() => {
+    const line = topLine(document.getElementById('doc'));
+    if (line && line !== lastSentLine) {
+      lastSentLine = line;
+      post({ type: 'scrollLine', line });
+    }
+  }, 400);
+}, { passive: true });
 
 function changeCount(changes) {
   return (changes.added?.length ?? 0) + (changes.changed?.length ?? 0) + (changes.removed?.length ?? 0);
@@ -40,6 +59,8 @@ function nextChange() {
 
 // DotMD's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
 function decorate(doc) {
+  if (memory) showMemory(doc, memory);
+  map.setChanges(marks ? changeLines(marks.changes) : []);
   if (!marks) return;
   applyMarks(doc, marks.changes);
   showChip(doc, { count: changeCount(marks.changes), since: marks.since }, {
@@ -227,6 +248,7 @@ window.DotMD = {
   clearMarks(fade) {
     const doc = document.getElementById('doc');
     marks = null;
+    map.setChanges([]);
     const chip = doc.querySelector('.chip');
     if (!fade) {
       removeMarks(doc);
@@ -235,6 +257,10 @@ window.DotMD = {
     }
     chip?.classList.add('mark-out');
     fadeMarks(doc, { reduceMotion: reduceMotion(), done: () => chip?.remove() });
+  },
+  setMemory({ line, label }) {
+    memory = line ? { line, label } : null;
+    showMemory(document.getElementById('doc'), memory ?? {});
   },
   setLayout(layout) {
     root.dataset.layout = layout === 'document' ? 'document' : 'files';

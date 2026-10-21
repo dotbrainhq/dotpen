@@ -16,6 +16,10 @@ struct ReaderScreen: View {
     @State private var documentKey: Int64?
     /// What changed since the person last read the file, as marked on the page now.
     @State private var changes = ChangeSet()
+    /// The line at the top of the view, saved once scrolling settles.
+    @State private var scrolledLine: Int?
+    /// The previous visit's reading line is shown once, when the file opens, before this visit moves it.
+    @State private var memoryShown = false
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
         self.fileURL = fileURL
@@ -49,6 +53,16 @@ struct ReaderScreen: View {
             }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
+            }
+            .task(id: scrolledLine) {
+                // Saves a second after scrolling stops, not on every pause.
+                guard let line = scrolledLine else { return }
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let document = libraryDocument else { return }
+                library.setReadLine(document, line: line)
+            }
+            .onChange(of: documentKey, initial: true) { _, _ in
+                showMemoryOnce()
             }
     }
 
@@ -200,6 +214,14 @@ struct ReaderScreen: View {
         controller.send(.applyMarks(changes: result, since: ReadingLabels.since(document.lastReadAt)))
     }
 
+    /// Shows where reading stopped last time, once per visit. Nothing shows when it stopped at the top.
+    private func showMemoryOnce() {
+        guard !memoryShown, let document = libraryDocument else { return }
+        memoryShown = true
+        guard let line = document.readLine, line > 1, let at = document.readLineAt else { return }
+        controller.send(.setMemory(line: line, label: ReadingLabels.stoppedReading(at: at)))
+    }
+
     /// The watched folder holding this file: relative images may come from anywhere inside it.
     private var assetRoot: URL? {
         fileURL.flatMap { library.folder(containing: $0)?.url }
@@ -257,6 +279,8 @@ struct ReaderScreen: View {
         case .markRead:
             guard let document = libraryDocument else { return }
             library.markRead(document, text: text)
+        case let .scrollLine(line):
+            scrolledLine = line
         default:
             break
         }
