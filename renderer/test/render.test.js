@@ -13,10 +13,10 @@ test('headings carry their source line', () => {
   assert.match(html, /<p data-line="3" data-line-end="3">Body text<\/p>/);
 });
 
-test('front matter becomes a card and keeps later line numbers', () => {
-  const html = render('---\nstatus: in-review\nagent: "claude-code"\n---\n\n# Plan');
-  assert.match(html, /<dl class="frontmatter"><div><dt>status<\/dt><dd>in-review<\/dd><\/div><div><dt>agent<\/dt><dd>claude-code<\/dd><\/div><\/dl>/);
-  assert.match(html, /<h1 data-line="6" data-line-end="6">Plan<\/h1>/);
+test('front matter becomes the status line and keeps later line numbers', () => {
+  const html = render('---\nstatus: in-review\nagent: claude-code\n---\n# Title\n');
+  assert.match(html, /<div class="meta"><span class="st st-review"><i><\/i>In review<\/span><span class="who"><span class="agent agent-claude">CC<\/span>Claude Code<\/span><\/div>/);
+  assert.match(html, /<h1 data-line="5" data-line-end="5">Title<\/h1>/);
 });
 
 test('task list items render checkboxes with their line', () => {

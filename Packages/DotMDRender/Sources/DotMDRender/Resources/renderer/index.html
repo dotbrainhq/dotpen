@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-size="medium" data-font="serif" data-width="medium" data-paper="auto">
+<html lang="en" data-layout="files" data-size="medium" data-font="serif" data-width="medium" data-paper="auto">
 <head>
   <meta charset="utf-8">
   <meta name="color-scheme" content="light dark">
@@ -7,7 +7,11 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main id="doc" class="doc"></main>
+  <div class="paper">
+    <div class="gutter"></div>
+    <main id="doc" class="doc"></main>
+    <aside id="margin" class="margin" aria-label="Outline"></aside>
+  </div>
   <script src="main.js"></script>
 </body>
 </html>

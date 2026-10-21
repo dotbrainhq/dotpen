@@ -34,6 +34,9 @@ struct ReaderScreen: View {
             .onChange(of: options) { _, newValue in
                 controller.send(.setReadingOptions(newValue))
             }
+            .onChange(of: layout) { _, newValue in
+                controller.send(.setLayout(newValue))
+            }
             .onChange(of: folderSignature, initial: true) { _, _ in
                 resolveDocument()
             }
@@ -171,9 +174,15 @@ struct ReaderScreen: View {
         fileURL.flatMap { library.folder(containing: $0)?.url }
     }
 
+    /// The Files window with its list showing uses the files layout; a hidden list or a document window, the document one.
+    private var layout: ReaderLayout {
+        filesChrome?.sidebarVisible == true ? .files : .document
+    }
+
     private func start() {
         controller.onMessage = handle
         controller.setDocumentLocation(fileURL, root: assetRoot)
+        controller.send(.setLayout(layout))
         controller.send(.render(markdown: text, options: options))
     }
 
