@@ -67,8 +67,9 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 :root[data-layout="document"] .paper { grid-template-columns: 170px minmax(0, 600px) 250px; }
 :root[data-width="narrow"] .paper { grid-template-columns: 110px minmax(0, 480px) 240px; }
 :root[data-width="wide"] .paper { grid-template-columns: 70px minmax(0, 680px) 200px; }
-/* Narrower than the three columns: keep room for the change tags, drop the margin. */
-@media (max-width: 919px) {
+/* Too narrow for the margin: keep room for the change tags, drop the margin. The text column shrinks before this,
+   so a scrollbar appearing doesn't flip the layout. */
+@media (max-width: 829px) {
   .paper, :root[data-layout] .paper, :root[data-width] .paper { grid-template-columns: 44px minmax(0, 1fr) 28px; }
   .margin { display: none; }
 }
