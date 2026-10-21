@@ -3,14 +3,23 @@ import SwiftUI
 
 @main
 struct DotMDApp: App {
-    @State private var library = Library.makeDefault()
+    @State private var library: Library
+    @State private var bridge: AgentBridge
+
+    init() {
+        let library = Library.makeDefault()
+        _library = State(initialValue: library)
+        _bridge = State(initialValue: AgentBridge(library: library))
+    }
 
     var body: some Scene {
         Window("DotMD", id: "files") {
             FilesWindow()
                 .environment(library)
+                .environment(bridge)
                 .task {
                     await library.start()
+                    bridge.startIfEnabled()
                     #if DEBUG
                     await DebugWorkspace.open(in: library)
                     #endif
@@ -28,7 +37,11 @@ struct DotMDApp: App {
         Window("Settings", id: "settings") {
             SettingsView()
                 .environment(library)
-                .task { await library.start() }
+                .environment(bridge)
+                .task {
+                    await library.start()
+                    bridge.startIfEnabled()
+                }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -40,7 +53,11 @@ struct DotMDApp: App {
                 .background(WindowTabbing())
                 .frame(minWidth: 560, minHeight: 480)
                 .environment(library)
-                .task { await library.start() }
+                .environment(bridge)
+                .task {
+                    await library.start()
+                    bridge.startIfEnabled()
+                }
         }
         .commands { ExportCommands() }
     }

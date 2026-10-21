@@ -6,19 +6,21 @@ import SwiftUI
 /// then the About footer. The prototype's Done button is left out: Mac settings windows close with the close button. Only the panes whose features exist are listed; the rest join as they ship.
 struct SettingsView: View {
     enum Pane: String, CaseIterable, Identifiable {
-        case folders
+        case folders, integrations
 
         var id: String { rawValue }
 
         var title: String {
             switch self {
             case .folders: "Folders"
+            case .integrations: "Integrations"
             }
         }
 
         var icon: String {
             switch self {
             case .folders: "folders"
+            case .integrations: "plug"
             }
         }
     }
@@ -32,6 +34,7 @@ struct SettingsView: View {
             bar
             switch pane {
             case .folders: FoldersSettings()
+            case .integrations: IntegrationsSettings()
             }
             AboutFooter()
         }
@@ -161,6 +164,44 @@ private struct FoldersSettings: View {
             startingAt: path.deletingLastPathComponent()
         ) else { return }
         Task { try? await library.reconnect(folder.id, to: url) }
+    }
+}
+
+/// The agent bridge's switch, then how to connect Claude Code once it's on.
+private struct IntegrationsSettings: View {
+    @Environment(AgentBridge.self) private var bridge
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SettingsRow(title: "Agent bridge", detail: "An MCP server so your agents can read your comments and resolve them.") {
+                Toggle("Agent bridge", isOn: Binding(get: { bridge.isEnabled }, set: { bridge.setEnabled($0) }))
+                    .toggleStyle(SwitchToggleStyle())
+            }
+            switch bridge.state {
+            case .running, .starting:
+                // Each agent adds the bridge its own way, and people use different ones.
+                ForEach(bridge.connections) { connection in
+                    SettingsDivider()
+                    SettingsRow(title: connection.agent, detail: connection.detail) {
+                        Button(connection.button) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(connection.text, forType: .string)
+                        }
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                        .accessibilityLabel("\(connection.button) for \(connection.agent)")
+                    }
+                }
+            case let .failed(message):
+                SettingsDivider()
+                SettingsRow(title: "The bridge couldn't start", detail: message) {
+                    Button("Try Again") { bridge.start() }
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                }
+            case .off:
+                EmptyView()
+            }
+        }
+        .padding(EdgeInsets(top: 18, leading: 26, bottom: 22, trailing: 26))
     }
 }
 

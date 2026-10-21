@@ -9,6 +9,8 @@ packages:
     path: Packages/DotMDCore
   DotMDRender:
     path: Packages/DotMDRender
+  DotMDBridge:
+    path: Packages/DotMDBridge
 targets:
   DotMD:
     type: application
@@ -20,6 +22,8 @@ targets:
         product: DotMDCore
       - package: DotMDRender
         product: DotMDRender
+      - package: DotMDBridge
+        product: DotMDBridge
       - target: DotMDQuickLook
         embed: true
     settings:

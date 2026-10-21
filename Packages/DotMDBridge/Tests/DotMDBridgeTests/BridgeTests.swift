@@ -54,6 +54,8 @@ private func call(_ tools: MCPTools, _ name: String, _ arguments: [String: Any] 
         try? await Task.sleep(for: .milliseconds(50))
         #expect(await names.all == ["Claude Code"])
         #expect(MCPTools.agentName(forClient: "codex-mcp-client") == "Codex")
+        #expect(MCPTools.agentName(forClient: "gemini-cli-mcp-client") == "Gemini CLI")
+        #expect(MCPTools.agentName(forClient: "grok-cli") == "Grok CLI")
         #expect(MCPTools.agentName(forClient: "my-agent") == "my-agent")
     }
 

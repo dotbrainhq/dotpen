@@ -28,6 +28,8 @@ public struct MCPTools: Sendable {
         if id.contains("claude") { return "Claude Code" }
         if id.contains("codex") { return "Codex" }
         if id.contains("cursor") { return "Cursor" }
+        if id.contains("gemini") { return "Gemini CLI" }
+        if id.contains("grok") { return "Grok CLI" }
         return client
     }
 
