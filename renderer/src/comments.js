@@ -125,14 +125,17 @@ export function openComposer(doc, margin, { line, quote, body = '', id = null },
   save.innerHTML = 'Comment<kbd>⌘↩</kbd>';
   row.append(cancel, save);
   card.appendChild(row);
+  // The composer pushed the cards below it down; they go back beside their passages when it closes.
   const submit = () => {
     const text = field.value.trim();
     if (!text) return;
     closeComposer(margin);
+    layoutCards(doc, margin);
     onSubmit({ line, quote, body: text, id });
   };
   const dismiss = () => {
     closeComposer(margin);
+    layoutCards(doc, margin);
     onCancel?.();
   };
   cancel.addEventListener('click', dismiss);

@@ -98,6 +98,22 @@ test('an empty comment isn\'t saved', () => {
   assert.ok(margin.querySelector('.cmt.compose'));
 });
 
+test('saved cards move back beside their passage when the composer closes', () => {
+  const { doc, margin } = page(plan);
+  renderComments(doc, margin, [
+    { id: 7, line: 5, quote: 'log every decision', body: 'Log for a week.', when: 'now', inPrompt: true, number: 1 },
+  ], author, { onEdit: noop, onResolve: noop });
+  const card = margin.querySelector('.cmt.saved');
+  openComposer(doc, margin, { line: 5, quote: 'block nothing' }, author, { onSubmit: noop, onCancel: noop });
+  assert.equal(card.style.top, '8px');
+  margin.querySelector('.cmt.compose .btn:not(.pri)').click();
+  assert.equal(card.style.top, '0px');
+  openComposer(doc, margin, { line: 5, quote: 'block nothing' }, author, { onSubmit: noop, onCancel: noop });
+  margin.querySelector('.cmt.compose textarea').value = 'Two weeks.';
+  margin.querySelector('.cmt.compose .btn.pri').click();
+  assert.equal(card.style.top, '0px');
+});
+
 test('a selection inside a block gives its text and line', () => {
   const { dom, doc } = page(plan);
   const d = dom.window.document;

@@ -29,6 +29,13 @@ enum Palette {
     static let lineSoft = Color("LineSoft")
     /// Text on DotMD's green.
     static let onAccent = Color("OnAccent")
+    /// The comments panel: a selected comment's ring, and a resolved comment's quote bar.
+    static let accentLine = Color("AccentLine")
+    static let ink5 = Color("Ink5")
+    /// The Send sheet's prompt, on the color code blocks use.
+    static let codeBackground = Color("CodeBackground")
+    /// Behind the Send sheet.
+    static let scrim = Color("Scrim")
 }
 
 /// One of the prototype's 16 point line icons, drawn at the given size and tinted by the foreground style.

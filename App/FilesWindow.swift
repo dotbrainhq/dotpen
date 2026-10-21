@@ -15,6 +15,8 @@ struct FilesWindow: View {
     @AppStorage("fileSort") private var sort = FileSortOrder.lastChanged
     @AppStorage("showTitles") private var showTitles = false
     @State private var filter = FileFilter()
+    /// The Send sheet, over the whole window with the scrim behind it.
+    @State private var sheet: AnyView?
 
     /// The prototype's sidebar column.
     static let sidebarWidth: CGFloat = 272
@@ -32,6 +34,20 @@ struct FilesWindow: View {
                     }
                     detail
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        }
+        .overlay(alignment: .top) {
+            if let sheet {
+                ZStack(alignment: .top) {
+                    Palette.scrim
+                        .contentShape(Rectangle())
+                        .onTapGesture { showSheet(nil) }
+                        .transition(.opacity)
+                    // Hangs from the bottom of the 52 point bar, as the prototype's sheet does.
+                    sheet
+                        .padding(.top, 52)
+                        .transition(reduceMotion ? .opacity : .offset(y: -16).combined(with: .opacity))
                 }
             }
         }
@@ -54,7 +70,7 @@ struct FilesWindow: View {
     }
 
     private var chrome: FilesChrome {
-        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles)
+        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles, showSheet: showSheet)
     }
 
     /// The prototype's `.side-in`: a rounded panel 8 points in from the window's top, left and bottom, padded
@@ -101,6 +117,10 @@ struct FilesWindow: View {
             }
             .navigationTitle("DotMD")
         }
+    }
+
+    private func showSheet(_ view: AnyView?) {
+        sheet = view
     }
 
     private func toggleFiles() {

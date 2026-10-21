@@ -153,6 +153,8 @@ public enum ReaderMessage: Equatable, Sendable {
     case resolveComment(id: Int64)
     /// Copy as prompt in the selection bar: the passage and where it is.
     case copyPrompt(line: Int, quote: String)
+    /// A comment composer gained or lost focus. While it has it, ⌘↩ belongs to the composer.
+    case composing(Bool)
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -179,6 +181,9 @@ public enum ReaderMessage: Equatable, Sendable {
         case "resolveComment":
             guard let id = (dict["id"] as? NSNumber)?.int64Value else { return nil }
             self = .resolveComment(id: id)
+        case "composing":
+            guard let active = dict["active"] as? Bool else { return nil }
+            self = .composing(active)
         case "copyPrompt":
             guard let line = (dict["line"] as? NSNumber)?.intValue, let quote = dict["quote"] as? String else { return nil }
             self = .copyPrompt(line: line, quote: quote)

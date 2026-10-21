@@ -9,6 +9,7 @@ struct ReaderScreen: View {
     let onOpenDocument: ((URL) -> ())?
 
     @Environment(Library.self) private var library
+    @Environment(AgentBridge.self) private var bridge
     @State private var controller = ReaderController()
     @State private var text: String
     @AppStorage("readingOptions") private var options = ReadingOptions()
@@ -22,6 +23,14 @@ struct ReaderScreen: View {
     @State private var memoryShown = false
     /// The start line of the last block written while the file was open, for the caret.
     @State private var lastWrittenLine: Int?
+    /// The file's comments, each with where its passage is now.
+    @State private var comments: [PlacedComment] = []
+    @State private var showingComments = false
+    /// The Send sheet in a document window. The Files window shows it over the whole window instead.
+    @State private var showingSend = false
+    /// A comment composer on the page has focus, so ⌘↩ saves the comment rather than opening Send.
+    @State private var composing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
         self.fileURL = fileURL
@@ -69,6 +78,12 @@ struct ReaderScreen: View {
             .onChange(of: documentKey, initial: true) { _, _ in
                 showMemoryOnce()
             }
+            .task(id: CommentsKey(version: library.commentsVersion, document: documentKey, text: text)) {
+                loadComments()
+            }
+            .onChange(of: showingComments) { _, open in
+                controller.send(.setPanel(open))
+            }
     }
 
     /// In the Files window the reader draws the prototype's own bar; a document window keeps the system toolbar.
@@ -78,6 +93,7 @@ struct ReaderScreen: View {
                 TopBar(chrome: filesChrome, title: displayTitle, path: displayPath) {
                     Cap { readingOptionsButton.buttonStyle(CapButtonStyle()) }
                     Cap {
+                        commentsButton.buttonStyle(CapButtonStyle())
                         // The prototype's share button is the icon alone; the label stays for VoiceOver.
                         ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
                             .labelStyle(.iconOnly)
@@ -85,20 +101,180 @@ struct ReaderScreen: View {
                             .buttonStyle(CapButtonStyle())
                             .fixedSize()
                     }
+                    Cap { sendButton.buttonStyle(CapButtonStyle(tint: Palette.accentInk, weight: .semibold)) }
                 }
                 ReaderView(controller: controller)
+                    .overlay(alignment: .trailing) { panel }
             }
         } else {
             ReaderView(controller: controller)
+                .overlay(alignment: .trailing) { panel }
+                .overlay(alignment: .top) {
+                    if showingSend {
+                        ZStack(alignment: .top) {
+                            Palette.scrim
+                                .contentShape(Rectangle())
+                                .onTapGesture(perform: closeSend)
+                            sendSheet
+                        }
+                        .transition(.opacity)
+                    }
+                }
                 .toolbar(removing: .title)
                 .toolbar {
                     titleItem
                     ToolbarItemGroup(placement: .primaryAction) {
                         readingOptionsButton
+                        commentsButton
                         ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
+                        sendButton
                     }
                 }
         }
+    }
+
+    // MARK: Comments
+
+    private struct CommentsKey: Equatable {
+        let version: Int
+        let document: Int64?
+        let text: String
+    }
+
+    private var commentsButton: some View {
+        Button {
+            withAnimation(panelAnimation) { showingComments.toggle() }
+        } label: {
+            Icon("bubble", size: 16)
+        }
+        .help("Show all comments")
+        .accessibilityLabel("Comments")
+    }
+
+    /// The prototype's `.cap.send`: green and semibold with the count, ink-4 and still when nothing's waiting.
+    private var sendButton: some View {
+        Button(action: openSend) {
+            HStack(spacing: 6) {
+                Icon("send", size: 16)
+                Text("Send to agent")
+                if inPrompt.count > 0 { CountBadge(count: inPrompt.count) }
+            }
+        }
+        .disabled(inPrompt.isEmpty || showingSend)
+        .keyboardShortcut(composing ? nil : KeyboardShortcut(.return, modifiers: .command))
+        .help("Send to agent ⌘↩")
+    }
+
+    @ViewBuilder private var panel: some View {
+        if showingComments {
+            CommentsPanel(
+                comments: comments,
+                agent: bridge.lastAgent ?? "your agent",
+                onReveal: { item in
+                    if let range = item.range { controller.send(.reveal(line: range.start)) }
+                },
+                onResolve: { comment, resolved in library.setResolved(comment, resolved) },
+                onSend: openSend,
+                onCopyPrompt: { copy(prompt(includeChanges: true)) }
+            )
+            .transition(reduceMotion ? .opacity : .move(edge: .trailing))
+        }
+    }
+
+    private var panelAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.12) : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)
+    }
+
+    /// Open comments the next Send carries, in reading order.
+    private var inPrompt: [PlacedComment] {
+        comments.filter(\.comment.isInPrompt)
+    }
+
+    private var promptItems: [PromptBuilder.Item] {
+        inPrompt.map { item in
+            PromptBuilder.Item(
+                lineStart: item.range?.start ?? item.comment.lineStart,
+                lineEnd: item.range?.end ?? item.comment.lineEnd,
+                quote: item.comment.quote,
+                body: item.comment.body
+            )
+        }
+    }
+
+    private func prompt(includeChanges: Bool) -> String {
+        guard let document = libraryDocument else { return "" }
+        let notes = includeChanges ? PromptBuilder.changeNotes(changes, in: text) : []
+        return PromptBuilder.prompt(path: document.relativePath, noun: document.kind.promptNoun, items: promptItems, changeNotes: notes)
+    }
+
+    private var sendSheet: SendSheet {
+        let items = inPrompt.map(\.comment)
+        return SendSheet(
+            path: libraryDocument?.relativePath ?? "",
+            noun: libraryDocument?.kind.promptNoun ?? "file",
+            items: promptItems,
+            changeNotes: PromptBuilder.changeNotes(changes, in: text),
+            onCopy: { prompt in
+                copy(prompt)
+                closeSend()
+            },
+            onSend: { [library] prompt, resolve in
+                copy(prompt)
+                library.markSent(items, resolve: resolve)
+                closeSend()
+            },
+            onClose: closeSend
+        )
+    }
+
+    private func openSend() {
+        guard !inPrompt.isEmpty else { return }
+        let animation: Animation = reduceMotion ? .easeOut(duration: 0.12) : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)
+        if let filesChrome {
+            withAnimation(animation) { filesChrome.showSheet(AnyView(sendSheet)) }
+        } else {
+            withAnimation(animation) { showingSend = true }
+        }
+    }
+
+    private func closeSend() {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.12) : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)) {
+            filesChrome?.showSheet(nil)
+            showingSend = false
+        }
+    }
+
+    /// Who writes the comments: the person's initial in the avatar, and "You".
+    private var author: CommentAuthor {
+        CommentAuthor(initial: NSFullUserName().first.map { String($0).uppercased() } ?? "Y", name: "You")
+    }
+
+    /// Finds each comment's passage in the text as it is now and shows the open ones beside the text, numbered.
+    private func loadComments() {
+        guard let document = libraryDocument else {
+            comments = []
+            controller.send(.setComments([], author: author, canComment: false))
+            return
+        }
+        comments = library.comments(for: document, text: text)
+        let shown = comments.filter { $0.comment.status == .open && $0.range != nil }
+        let items = shown.enumerated().map { index, item in
+            PageComment(
+                id: item.comment.key,
+                line: item.range?.start ?? item.comment.lineStart,
+                quote: item.comment.quote,
+                body: item.comment.body,
+                when: ReadingLabels.commentTime(item.comment.createdAt),
+                inPrompt: item.comment.isInPrompt,
+                number: index + 1
+            )
+        }
+        controller.send(.setComments(items, author: author, canComment: true))
+    }
+
+    private func copy(_ value: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(value, forType: .string)
     }
 
     private var readingOptionsButton: some View {
@@ -293,8 +469,23 @@ struct ReaderScreen: View {
                   ["http", "https", "mailto"].contains(scheme) else { return }
             NSWorkspace.shared.open(url)
         case let .copyText(value):
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(value, forType: .string)
+            copy(value)
+        case let .saveComment(line, quote, body, id):
+            guard let document = libraryDocument else { return }
+            if let id, let existing = comments.first(where: { $0.id == id })?.comment {
+                library.editComment(existing, body: body)
+            } else {
+                library.addComment(to: document, quote: quote, line: line, body: body, text: text)
+            }
+        case let .resolveComment(id):
+            guard let existing = comments.first(where: { $0.id == id })?.comment else { return }
+            library.setResolved(existing, true)
+        case let .composing(active):
+            composing = active
+        case let .copyPrompt(line, quote):
+            let block = CommentAnchor.block(containing: line, in: text)
+            let path = libraryDocument?.relativePath ?? fileURL?.lastPathComponent ?? ""
+            copy(PromptBuilder.reference(path: path, lineStart: block?.startLine ?? line, lineEnd: block?.endLine ?? line, quote: quote))
         case .markRead:
             guard let document = libraryDocument else { return }
             library.markRead(document, text: text)

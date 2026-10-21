@@ -104,4 +104,6 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "resolveComment", "id": 7]) == .resolveComment(id: 7))
     #expect(ReaderMessage(body: ["type": "copyPrompt", "line": 14, "quote": "q"]) == .copyPrompt(line: 14, quote: "q"))
     #expect(ReaderMessage(body: ["type": "saveComment", "line": 14]) == nil)
+    #expect(ReaderMessage(body: ["type": "composing", "active": true]) == .composing(true))
+    #expect(ReaderMessage(body: ["type": "composing"]) == nil)
 }

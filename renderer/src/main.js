@@ -104,7 +104,10 @@ function showComments(doc) {
     return;
   }
   renderComments(doc, margin(), comments.items, comments.author, {
-    onEdit: (comment) => openComposer(doc, margin(), comment, comments.author, { onSubmit: saveComment }),
+    onEdit: (comment) => openComposer(doc, margin(), comment, comments.author, {
+      onSubmit: saveComment,
+      onCancel: () => composing(false),
+    }),
     onResolve: (comment) => post({ type: 'resolveComment', id: comment.id }),
   });
   map.setComments(comments.items.map((comment) => comment.line));
@@ -112,8 +115,21 @@ function showComments(doc) {
 
 function saveComment({ line, quote, body, id }) {
   CSS.highlights?.delete('compose');
+  composing(false);
   post({ type: 'saveComment', line, quote, body, id });
 }
+
+// While a composer has focus, ⌘↩ saves the comment. Swift turns off the toolbar's ⌘↩ (Send to agent) meanwhile.
+let isComposing = false;
+function composing(active) {
+  if (active === isComposing) return;
+  isComposing = active;
+  post({ type: 'composing', active });
+}
+document.addEventListener('focusin', (event) => composing(Boolean(event.target.closest?.('.cmt.compose'))));
+document.addEventListener('focusout', (event) => {
+  if (!event.relatedTarget?.closest?.('.cmt.compose')) composing(false);
+});
 
 // The selection under the bar, with its range, so Comment can still find it once the composer takes focus.
 let selected = null;
@@ -126,7 +142,10 @@ function compose({ info, range }) {
   if (window.Highlight) CSS.highlights.set('compose', new Highlight(range));
   openComposer(doc, margin(), { line: info.line, quote: info.text }, comments.author, {
     onSubmit: saveComment,
-    onCancel: () => CSS.highlights?.delete('compose'),
+    onCancel: () => {
+      CSS.highlights?.delete('compose');
+      composing(false);
+    },
   });
 }
 
