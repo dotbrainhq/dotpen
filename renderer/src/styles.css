@@ -117,6 +117,18 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 .del, .ins, .gut, .removed, .added::before { transition-property: opacity, color; transition-duration: var(--mark-duration, 220ms); transition-delay: var(--mark-delay, 0ms); transition-timing-function: cubic-bezier(.2, .8, .2, 1); }
 .del.mark-out, .gut.mark-out, .removed.mark-out, .added.mark-out::before { opacity: 0; }
 .ins.mark-out { color: inherit; background: none; }
+
+/* The change chip under the status line. */
+.chip { display: inline-flex; align-items: center; gap: 2px; font-family: var(--font-ui); font-size: 12px; margin-bottom: 18px; border-radius: 999px; background: var(--accent-wash); padding: 3px 4px 3px 10px; color: var(--accent-ink); transition: opacity 220ms cubic-bezier(.2, .8, .2, 1); }
+.chip b { font-weight: 600; margin-right: 5px; }
+.chip .since { color: var(--ink-3); margin-right: 4px; }
+.chip button { font: inherit; font-weight: 500; border: 0; background: none; padding: 3px 9px; border-radius: 999px; color: var(--accent-ink); display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.chip button:hover { background: rgba(0, 132, 80, 0.12); }
+.chip button kbd { font: 600 10.5px var(--font-ui); padding: 0 4px; border-radius: 4px; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.chip.mark-out { opacity: 0; }
+/* Next outlines the block it lands on, then lets go. */
+.target-flash { box-shadow: 0 0 0 2px var(--accent-line); border-radius: 6px; }
+[data-line] { transition: box-shadow 600ms cubic-bezier(.2, .8, .2, 1); }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
@@ -193,6 +205,7 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
 
 @media (prefers-reduced-motion: reduce) {
   .copy { transition: none; }
+  [data-line], .chip { transition: none; }
 }
 
 /* Paper is always white, whatever page color the window uses. */
@@ -206,6 +219,7 @@ html, body { margin: 0; background: var(--bg); color: var(--ink); -webkit-font-s
   .task-list-item-checkbox { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .paper { display: block; padding: 0; } .gutter, .margin { display: none; }
   .copy { display: none; }
+  .chip { display: none; }
   .del, .del-gap, .gut, .removed { display: none; } .ins { color: inherit; background: none; } .added::before { display: none; }
   :root[data-paper] .mermaid-block .diagram-light { display: block; }
   :root[data-paper] .mermaid-block .diagram-dark { display: none; }
