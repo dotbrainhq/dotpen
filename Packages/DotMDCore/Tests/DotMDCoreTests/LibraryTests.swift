@@ -493,3 +493,25 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     #expect(library.folders == before)
     #expect(changes.count == 0)
 }
+
+@MainActor @Test func pausedWatchingCatchesUpWhenItEnds() async throws {
+    let temp = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.pauseWatching(for: .seconds(3600))
+    #expect(library.pausedUntil != nil)
+    let file = try temp.write("HANDOFF.md", "# Handoff")
+    await library.handle([file.path], in: id)
+    #expect(library.folders.first?.documents.contains { $0.relativePath == "HANDOFF.md" } == false)
+    await library.resumeWatching()
+    #expect(library.pausedUntil == nil)
+    #expect(library.folders.first?.documents.contains { $0.relativePath == "HANDOFF.md" } == true)
+}
+
+@MainActor @Test func pausingEndsOnItsOwn() async throws {
+    let library = try makeLibrary()
+    library.pauseWatching(for: .milliseconds(200))
+    #expect(try await eventually { library.pausedUntil == nil })
+}

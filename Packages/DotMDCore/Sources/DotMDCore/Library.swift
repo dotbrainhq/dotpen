@@ -58,6 +58,8 @@ public final class Library {
             rescanAllTask = Task { await rescanAll() }
         }
     }
+    /// While set, file events wait: the list stops moving until this time, then a rescan catches up.
+    public private(set) var pausedUntil: Date?
     /// How long a file counts as being written after its last change.
     @ObservationIgnored public var writingQuietPeriod: Duration = .seconds(3)
 
@@ -72,6 +74,9 @@ public final class Library {
     @ObservationIgnored private var rescanAllTask: Task<(), Never>?
     /// A queued rescan per folder that hasn't started yet. Later requests wait on it instead of queuing another.
     @ObservationIgnored private var pendingRescans: [Int64: Task<(), Never>] = [:]
+    /// Folders that had events while watching was paused.
+    @ObservationIgnored private var missedWhilePaused: Set<Int64> = []
+    @ObservationIgnored private var resumeTask: Task<(), Never>?
 
     public init(database: LibraryDatabase) {
         self.database = database
@@ -433,6 +438,29 @@ public final class Library {
         reloadDocuments(id)
     }
 
+    // MARK: Pausing
+
+    /// Stops reacting to file changes for a while, as the menu bar item's "Pause watching for 1 hour" does.
+    public func pauseWatching(for duration: Duration) {
+        pausedUntil = Date.now.addingTimeInterval(TimeInterval(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18)
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            try? await Task.sleep(for: duration)
+            guard !Task.isCancelled else { return }
+            await self?.resumeWatching()
+        }
+    }
+
+    /// Watches again, and rescans the folders that changed meanwhile.
+    public func resumeWatching() async {
+        resumeTask?.cancel()
+        resumeTask = nil
+        pausedUntil = nil
+        let missed = missedWhilePaused
+        missedWhilePaused = []
+        for id in missed { await rescan(id) }
+    }
+
     /// Test hook: builds events from the disk as it is now, since plain paths carry no flags. A path that exists is a
     /// folder when the disk says so. A missing path is removed, and counts as a folder when stored documents sit under it.
     func handle(_ paths: [String], in id: Int64) async {
@@ -454,6 +482,10 @@ public final class Library {
     /// Applies one batch of file events for a folder, after any earlier work for it. A batch that needs a full
     /// rescan queues one afterwards, merged with any rescan already waiting.
     func handle(_ events: [FolderEvent], in id: Int64) async {
+        if pausedUntil != nil {
+            missedWhilePaused.insert(id)
+            return
+        }
         var needsRescan = false
         await serialized(id) { [weak self] in needsRescan = await self?.apply(events, in: id) ?? false }
         if needsRescan { await rescan(id) }
