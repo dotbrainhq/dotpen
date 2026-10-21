@@ -21,3 +21,7 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - Changes since you last read a file: changed words struck and rewritten in green, a bar beside added blocks, and a tag where lines were removed. A chip counts them, Next (or N) walks through them, and Mark read clears them.
 - A change map on the scrollbar and a dotted line where you stopped reading.
 - Live writing: blocks an agent writes into an open file glow as they arrive.
+- Comments: select text and press C to comment in the margin. Each comment underlines its passage, follows it when lines move, and shows as a dot on the change map.
+- A comments panel with open and resolved comments, and Copy as prompt for any selection.
+- Send to agent turns your comments into a prompt with the exact lines they point at, copies it, and marks them sent.
+- The agent bridge: a local MCP server your agents use to read your comments and resolve them. Settings > Integrations has setup for Claude Code, Codex, Gemini CLI, Grok CLI and Cursor.

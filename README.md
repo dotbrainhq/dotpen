@@ -17,6 +17,19 @@ DotMD is a free, open-source, native Mac app. It's in early development, and the
 - **Sends comments back:** select text, comment, and send your notes to the agent as a prompt.
 - **Fits the Mac:** Quick Look previews in Finder, PDF and HTML export, keyboard shortcuts, and light and dark mode.
 
+## Connect an agent
+
+Turn on the agent bridge in Settings > Integrations. Each agent has a row there with a Copy button: run the copied command once in Terminal, or for Cursor, add the copied entry to `~/.cursor/mcp.json`.
+
+| Agent | Command |
+|---|---|
+| Claude Code | `claude mcp add --transport http --scope user dotmd http://127.0.0.1:47319/mcp` |
+| Codex | `codex mcp add dotmd --url http://127.0.0.1:47319/mcp` |
+| Gemini CLI | `gemini mcp add --scope user --transport http dotmd http://127.0.0.1:47319/mcp` |
+| Grok CLI | `grok mcp add --transport http dotmd http://127.0.0.1:47319/mcp` |
+
+Your agent can then list your open comments, read the ones on a file, and resolve them when it's done. Any other agent that speaks MCP over HTTP connects to `http://127.0.0.1:47319/mcp`. The bridge listens on your Mac only.
+
 ## Build from source
 
 You need macOS 15 or later, Xcode 27, XcodeGen, and Node 22.
@@ -46,6 +59,7 @@ npm run build
 | `App/` | The SwiftUI app: windows, toolbar, settings. |
 | `Packages/DotMDCore/` | Logic with no UI, like watching files. |
 | `Packages/DotMDRender/` | The document view, the bridge to the renderer, and export. |
+| `Packages/DotMDBridge/` | The agent bridge: a local MCP server that hands your comments to agents. |
 | `QuickLook/` | The Finder Quick Look extension. |
 | `renderer/` | The Markdown renderer that runs inside the document view. |
 | `fixtures/` | Sample documents for checking the renderer by hand. |
