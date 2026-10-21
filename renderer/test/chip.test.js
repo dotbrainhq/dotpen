@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { renderDocument } from '../src/document.js';
 import { createSanitizer } from '../src/sanitize.js';
-import { showChip, nextChangeLine } from '../src/chip.js';
+import { showChip, nextChangeLine, previousChangeLine } from '../src/chip.js';
 
 function page(markdown) {
   const dom = new JSDOM('<main id="doc"></main>');
@@ -50,4 +50,11 @@ test('Next goes to the first change below the view, then wraps', () => {
   assert.equal(nextChangeLine([9, 3, 20], 0, (l) => tops[l]), 3);
   assert.equal(nextChangeLine([3, 9, 20], 100, (l) => tops[l]), 9);
   assert.equal(nextChangeLine([3, 9, 20], 2000, (l) => tops[l]), 3);
+});
+
+test('Shift-N goes to the last change above the view, then wraps', () => {
+  const tops = { 3: 100, 9: 600, 20: 1500 };
+  assert.equal(previousChangeLine([9, 3, 20], 604, (l) => tops[l]), 3);
+  assert.equal(previousChangeLine([3, 9, 20], 1504, (l) => tops[l]), 9);
+  assert.equal(previousChangeLine([3, 9, 20], 50, (l) => tops[l]), 20);
 });

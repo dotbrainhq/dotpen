@@ -165,6 +165,8 @@ public enum ReaderMessage: Equatable, Sendable {
     case composing(Bool)
     /// F on the page: start or stop following the agent writing the file.
     case toggleFollow
+    /// ? on the page: the keyboard shortcuts overlay.
+    case showShortcuts
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -192,6 +194,7 @@ public enum ReaderMessage: Equatable, Sendable {
             guard let id = (dict["id"] as? NSNumber)?.int64Value else { return nil }
             self = .resolveComment(id: id)
         case "toggleFollow": self = .toggleFollow
+        case "showShortcuts": self = .showShortcuts
         case "composing":
             guard let active = dict["active"] as? Bool else { return nil }
             self = .composing(active)

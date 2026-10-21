@@ -43,6 +43,12 @@ export function nextChangeLine(lines, viewTop, topOf) {
   return sorted.find((line) => topOf(line) > viewTop + 4) ?? sorted[0];
 }
 
+/** The change above the one at the top of the view, wrapping to the last: Shift-N. */
+export function previousChangeLine(lines, viewTop, topOf) {
+  const sorted = [...lines].sort((a, b) => a - b);
+  return sorted.findLast((line) => topOf(line) < viewTop - 4) ?? sorted.at(-1);
+}
+
 /**
  * Scrolls a block to just under the top with an ease-out over 300 ms, then outlines it briefly.
  * With Reduce Motion it jumps and only outlines.

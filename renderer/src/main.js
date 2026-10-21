@@ -3,7 +3,7 @@ import { createSanitizer } from './sanitize.js';
 import { rewriteLocalImages } from './assets.js';
 import { buildOutline } from './outline.js';
 import { applyMarks, fadeMarks, removeMarks, blockAt } from './marks.js';
-import { showChip, nextChangeLine, revealBlock } from './chip.js';
+import { showChip, nextChangeLine, previousChangeLine, revealBlock } from './chip.js';
 import { createMap } from './map.js';
 import { showMemory, topLine } from './memory.js';
 import { markLive as glow, setWriting as showCaret } from './live.js';
@@ -53,14 +53,14 @@ function changeLines(changes) {
 }
 
 // A revealed block sits 24 points under the top, so Next looks below that for the one after it.
-function nextChange() {
+function nextChange(backwards = false) {
   if (!marks) return;
   const doc = document.getElementById('doc');
   const topOf = (line) => {
     const block = blockAt(doc, line);
     return block ? block.getBoundingClientRect().top + window.scrollY : Infinity;
   };
-  const line = nextChangeLine(changeLines(marks.changes), window.scrollY + 28, topOf);
+  const line = (backwards ? previousChangeLine : nextChangeLine)(changeLines(marks.changes), window.scrollY + 28, topOf);
   if (line) revealBlock(doc, line, { reduceMotion: reduceMotion() });
 }
 
@@ -82,10 +82,12 @@ document.addEventListener('keydown', (event) => {
   if (event.target.closest?.('input, textarea, [contenteditable]')) return;
   if ((event.key === 'n' || event.key === 'N') && marks) {
     event.preventDefault();
-    nextChange();
+    nextChange(event.shiftKey);
   } else if ((event.key === 'c' || event.key === 'C') && selected && canComment()) {
     event.preventDefault();
     compose(selected);
+  } else if (event.key === '?') {
+    post({ type: 'showShortcuts' });
   } else if (event.key === 'f' || event.key === 'F') {
     // Following only means something while an agent writes the file; Swift ignores it otherwise.
     post({ type: 'toggleFollow' });

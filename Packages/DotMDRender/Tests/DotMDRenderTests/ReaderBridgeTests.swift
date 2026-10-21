@@ -109,4 +109,5 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "composing", "active": true]) == .composing(true))
     #expect(ReaderMessage(body: ["type": "composing"]) == nil)
     #expect(ReaderMessage(body: ["type": "toggleFollow"]) == .toggleFollow)
+    #expect(ReaderMessage(body: ["type": "showShortcuts"]) == .showShortcuts)
 }
