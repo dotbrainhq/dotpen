@@ -1,4 +1,5 @@
 import AppKit
+import DotMDBridge
 import DotMDCore
 import DotMDRender
 import SwiftUI
@@ -10,6 +11,7 @@ struct ReaderScreen: View {
 
     @Environment(Library.self) private var library
     @Environment(AgentBridge.self) private var bridge
+    @Environment(AgentActivity.self) private var activity
     @State private var controller = ReaderController()
     @State private var text: String
     @AppStorage("readingOptions") private var options = ReadingOptions()
@@ -30,6 +32,10 @@ struct ReaderScreen: View {
     @State private var showingSend = false
     /// A comment composer on the page has focus, so ⌘↩ saves the comment rather than opening Send.
     @State private var composing = false
+    /// While an agent writes the file, the view keeps its newest block in sight. Stop following turns that off.
+    @State private var following = true
+    /// The agent that just stopped writing this file, for the finished pill, until it's dismissed.
+    @State private var finishedBy: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
@@ -84,6 +90,14 @@ struct ReaderScreen: View {
             .onChange(of: showingComments) { _, open in
                 controller.send(.setPanel(open))
             }
+            .onChange(of: writingAgent) { previous, agent in
+                if let agent {
+                    finishedBy = nil
+                    if previous == nil { following = true }
+                } else if let previous {
+                    finishedBy = previous
+                }
+            }
     }
 
     /// In the Files window the reader draws the prototype's own bar; a document window keeps the system toolbar.
@@ -103,12 +117,10 @@ struct ReaderScreen: View {
                     }
                     Cap { sendButton.buttonStyle(CapButtonStyle(tint: Palette.accentInk, weight: .semibold)) }
                 }
-                ReaderView(controller: controller)
-                    .overlay(alignment: .trailing) { panel }
+                reader
             }
         } else {
-            ReaderView(controller: controller)
-                .overlay(alignment: .trailing) { panel }
+            reader
                 .overlay(alignment: .top) {
                     if showingSend {
                         ZStack(alignment: .top) {
@@ -131,6 +143,83 @@ struct ReaderScreen: View {
                     }
                 }
         }
+    }
+
+    /// The reader with what sits on it: the arrival banner above, an agent pill at the bottom, the panel on the right.
+    private var reader: some View {
+        VStack(spacing: 0) {
+            if let arrival = shownArrival {
+                ArrivalBanner(
+                    agent: arrival.agent.name,
+                    file: URL(fileURLWithPath: arrival.path).lastPathComponent,
+                    folder: library.folder(containing: URL(fileURLWithPath: arrival.path))?.folder.name ?? "",
+                    onOpen: {
+                        let url = URL(fileURLWithPath: arrival.path)
+                        activity.dismissArrival()
+                        if let onOpenDocument { onOpenDocument(url) } else { FileActions.openInNewWindow(url) }
+                    },
+                    onDismiss: activity.dismissArrival
+                )
+                .transition(.opacity)
+            }
+            ReaderView(controller: controller)
+                .overlay(alignment: .bottom) { agentPill }
+        }
+        .overlay(alignment: .trailing) { panel }
+    }
+
+    // MARK: Agents
+
+    /// The agent writing this file right now, by name, when its session log says so.
+    private var writingAgent: String? {
+        fileURL.flatMap { activity.writingSession(for: $0) }?.agent.name
+    }
+
+    /// Who Send goes to: the agent that last wrote this file, else the last one that connected to the bridge.
+    private var agentName: String {
+        fileURL.flatMap { activity.writer(for: $0) }?.agent.name ?? bridge.lastAgent ?? "your agent"
+    }
+
+    /// "Connected to Claude Code in api-gateway": the bridge is on, and the agent that last connected to it has a
+    /// session running in this file's folder.
+    private var connectedTo: String? {
+        guard case .running = bridge.state, let agent = bridge.lastAgent, let fileURL,
+              let folder = library.folder(containing: fileURL), let root = folder.url,
+              activity.activeSession(in: root, agent: agent) != nil else { return nil }
+        return "Connected to \(agent) in \(folder.folder.name)"
+    }
+
+    /// The prototype shows the arrival banner in the document layout only, for a new file other than this one.
+    private var shownArrival: AgentWrite? {
+        guard layout == .document, finishedBy == nil, let arrival = activity.arrival,
+              arrival.path != fileURL.map(AgentActivity.path) else { return nil }
+        let document = library.document(at: URL(fileURLWithPath: arrival.path))
+        return document.map { $0.readState == .new } ?? true ? arrival : nil
+    }
+
+    /// One notice at a time: finished beats the arrival banner, which beats following.
+    @ViewBuilder private var agentPill: some View {
+        if let finishedBy {
+            FinishedPill(
+                agent: finishedBy,
+                changes: changes.added.count + changes.changed.count + changes.removed.count,
+                onReview: {
+                    controller.send(.nextChange)
+                    self.finishedBy = nil
+                },
+                onDismiss: { self.finishedBy = nil }
+            )
+            .transition(.opacity)
+        } else if let writingAgent, shownArrival == nil {
+            FollowingPill(agent: writingAgent, following: following, onToggle: toggleFollow)
+                .transition(.opacity)
+        }
+    }
+
+    private func toggleFollow() {
+        guard writingAgent != nil else { return }
+        following.toggle()
+        if following, let lastWrittenLine { controller.send(.follow(line: lastWrittenLine)) }
     }
 
     // MARK: Comments
@@ -169,7 +258,7 @@ struct ReaderScreen: View {
         if showingComments {
             CommentsPanel(
                 comments: comments,
-                agent: bridge.lastAgent ?? "your agent",
+                agent: agentName,
                 onReveal: { item in
                     if let range = item.range { controller.send(.reveal(line: range.start)) }
                 },
@@ -210,6 +299,8 @@ struct ReaderScreen: View {
     private var sendSheet: SendSheet {
         let items = inPrompt.map(\.comment)
         return SendSheet(
+            agent: agentName,
+            connectedTo: connectedTo,
             path: libraryDocument?.relativePath ?? "",
             noun: libraryDocument?.kind.promptNoun ?? "file",
             items: promptItems,
@@ -375,12 +466,13 @@ struct ReaderScreen: View {
         }
     }
 
-    /// Diffs the file against the text last read and marks the page. A changed file with nothing to show, because
-    /// True while an agent is writing the file (M2's heuristic until M5 knows the session).
+    /// True while an agent is writing the file: its session log says so, or, for agents without readable logs, the
+    /// file changed in the last few seconds.
     private var isBeingWritten: Bool {
-        documentKey.map { library.writing.contains($0) } ?? false
+        writingAgent != nil || (documentKey.map { library.writing.contains($0) } ?? false)
     }
 
+    /// Diffs the file against the text last read and marks the page. A changed file with nothing to show, because
     /// DotMD has no copy of what was read or only front matter changed, is marked read instead.
     private func refreshMarks() async {
         guard let document = libraryDocument, document.readState == .changed else { return }
@@ -454,6 +546,7 @@ struct ReaderScreen: View {
             lastWrittenLine = lines.last
             controller.send(.markLive(lines: lines))
             controller.send(.setWriting(isBeingWritten, lastLine: lastWrittenLine))
+            if following, writingAgent != nil, let last = lines.last { controller.send(.follow(line: last)) }
         }
         await refreshMarks()
     }
@@ -480,6 +573,8 @@ struct ReaderScreen: View {
         case let .resolveComment(id):
             guard let existing = comments.first(where: { $0.id == id })?.comment else { return }
             library.setResolved(existing, true)
+        case .toggleFollow:
+            toggleFollow()
         case let .composing(active):
             composing = active
         case let .copyPrompt(line, quote):

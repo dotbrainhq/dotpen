@@ -36,6 +36,8 @@ enum Palette {
     static let codeBackground = Color("CodeBackground")
     /// Behind the Send sheet.
     static let scrim = Color("Scrim")
+    /// The arrival banner's soft green.
+    static let accentWash = Color("AccentWash")
 }
 
 /// One of the prototype's 16 point line icons, drawn at the given size and tinted by the foreground style.

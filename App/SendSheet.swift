@@ -4,6 +4,10 @@ import SwiftUI
 /// The prototype's Send sheet: the prompt DotMD builds from the comments, two switches, and Copy prompt or Send.
 /// Send copies the prompt too, so it works whether or not the agent reads comments through the bridge.
 struct SendSheet: View {
+    /// Who the comments go to, like "Claude Code".
+    let agent: String
+    /// "Connected to Claude Code in api-gateway" when that agent's session in this folder reads the bridge.
+    let connectedTo: String?
     /// The file's path in its repository, where the agent works.
     let path: String
     /// What the prompt's last line calls the file, like "plan".
@@ -24,7 +28,6 @@ struct SendSheet: View {
         PromptBuilder.prompt(path: path, noun: noun, items: items, changeNotes: includeChanges ? changeNotes : [])
     }
 
-    private var agent: String { bridge.lastAgent ?? "your agent" }
 
     private var title: String {
         "Send \(items.count == 1 ? "1 comment" : "\(items.count) comments") to \(agent)"
@@ -101,9 +104,12 @@ struct SendSheet: View {
     @ViewBuilder private var destination: some View {
         HStack(spacing: 8) {
             switch bridge.state {
+            case .running where connectedTo != nil:
+                LiveDot()
+                Text(connectedTo ?? "")
             case .running where bridge.lastAgent != nil:
                 LiveDot()
-                Text("\(agent) can read these through the bridge")
+                Text("\(bridge.lastAgent ?? agent) can read these through the bridge")
             case .running, .starting:
                 Text("The bridge is on. No agent has connected yet.")
             case .off, .failed:
