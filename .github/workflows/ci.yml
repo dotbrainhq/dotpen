@@ -44,6 +44,9 @@ jobs:
       - name: Test DotMDRender
         working-directory: Packages/DotMDRender
         run: swift test
+      - name: Test DotMDBridge
+        working-directory: Packages/DotMDBridge
+        run: swift test
       - name: Build the app
         run: |
           brew install xcodegen
