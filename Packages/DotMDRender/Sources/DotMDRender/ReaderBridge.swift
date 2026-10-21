@@ -5,6 +5,42 @@ public enum ReaderLayout: String, Sendable {
     case files, document
 }
 
+/// A comment as the page shows it, beside its passage in the margin.
+public struct PageComment: Encodable, Equatable, Sendable {
+    public var id: Int64
+    /// The first line of the block its passage is in.
+    public var line: Int
+    public var quote: String
+    public var body: String
+    /// When it was written, for the card: "now", "2:20 PM" or a date.
+    public var when: String
+    /// Open and not yet sent: the card says "In prompt" rather than "Sent".
+    public var inPrompt: Bool
+    /// Its number on the page, beside the passage.
+    public var number: Int
+
+    public init(id: Int64, line: Int, quote: String, body: String, when: String, inPrompt: Bool, number: Int) {
+        self.id = id
+        self.line = line
+        self.quote = quote
+        self.body = body
+        self.when = when
+        self.inPrompt = inPrompt
+        self.number = number
+    }
+}
+
+/// Who writes the comments: the initial in the avatar and the name on each card.
+public struct CommentAuthor: Encodable, Equatable, Sendable {
+    public var initial: String
+    public var name: String
+
+    public init(initial: String, name: String) {
+        self.initial = initial
+        self.name = name
+    }
+}
+
 /// Calls from Swift into window.DotMD in the renderer.
 public enum ReaderCommand: Sendable {
     case render(markdown: String, options: ReadingOptions)
@@ -20,6 +56,13 @@ public enum ReaderCommand: Sendable {
     /// The caret while a file is being written, at the end of the last written block.
     case setWriting(Bool, lastLine: Int?)
     case setLayout(ReaderLayout)
+    /// The file's open comments. canComment is false for a file outside the watched folders, which has nowhere to
+    /// keep them, so the selection bar leaves Comment out.
+    case setComments([PageComment], author: CommentAuthor, canComment: Bool)
+    /// The comments panel takes the right of the window, and the margin's cards hide behind it.
+    case setPanel(Bool)
+    /// Scrolls a block into view and flashes it, for a comment chosen in the panel.
+    case reveal(line: Int)
 
     public var javaScript: String {
         switch self {
@@ -39,6 +82,12 @@ public enum ReaderCommand: Sendable {
             return "window.DotMD.setWriting(\(Self.json(WritingPayload(writing: writing, lastLine: lastLine))))"
         case let .setLayout(layout):
             return "window.DotMD.setLayout(\(Self.json(layout.rawValue)))"
+        case let .setComments(items, author, canComment):
+            return "window.DotMD.setComments(\(Self.json(CommentsPayload(items: items, author: author, canComment: canComment))))"
+        case let .setPanel(open):
+            return "window.DotMD.setPanel(\(open))"
+        case let .reveal(line):
+            return "window.DotMD.reveal(\(line))"
         }
     }
 
@@ -67,6 +116,12 @@ public enum ReaderCommand: Sendable {
         let label: String
     }
 
+    private struct CommentsPayload: Encodable {
+        let items: [PageComment]
+        let author: CommentAuthor
+        let canComment: Bool
+    }
+
     private struct WritingPayload: Encodable {
         let writing: Bool
         let lastLine: Int?
@@ -93,6 +148,11 @@ public enum ReaderMessage: Equatable, Sendable {
     case markRead
     /// The source line at the top of the view, sent as the person scrolls.
     case scrollLine(Int)
+    /// Comment ⌘↩ in the composer: a new comment on a passage, or an edit when id is set.
+    case saveComment(line: Int, quote: String, body: String, id: Int64?)
+    case resolveComment(id: Int64)
+    /// Copy as prompt in the selection bar: the passage and where it is.
+    case copyPrompt(line: Int, quote: String)
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -112,6 +172,16 @@ public enum ReaderMessage: Equatable, Sendable {
         case "scrollLine":
             guard let line = (dict["line"] as? Int) ?? (dict["line"] as? NSNumber)?.intValue else { return nil }
             self = .scrollLine(line)
+        case "saveComment":
+            guard let line = (dict["line"] as? NSNumber)?.intValue, let quote = dict["quote"] as? String,
+                  let body = dict["body"] as? String else { return nil }
+            self = .saveComment(line: line, quote: quote, body: body, id: (dict["id"] as? NSNumber)?.int64Value)
+        case "resolveComment":
+            guard let id = (dict["id"] as? NSNumber)?.int64Value else { return nil }
+            self = .resolveComment(id: id)
+        case "copyPrompt":
+            guard let line = (dict["line"] as? NSNumber)?.intValue, let quote = dict["quote"] as? String else { return nil }
+            self = .copyPrompt(line: line, quote: quote)
         default:
             return nil
         }

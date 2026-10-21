@@ -26,3 +26,11 @@ test('headings inside raw HTML are left out', () => {
   buildOutline(doc, margin);
   assert.deepEqual([...margin.querySelectorAll('.toc button')].map((b) => b.textContent), ['A', 'B']);
 });
+
+test('rebuilding the outline keeps comment cards in the margin', () => {
+  const { doc, margin } = page('<h1>A</h1><p>x</p><h2>B</h2>');
+  margin.innerHTML = '<div class="cmt saved"></div>';
+  buildOutline(doc, margin);
+  buildOutline(doc, margin);
+  assert.deepEqual([...margin.children].map((el) => el.className), ['toc', 'cmt saved']);
+});
