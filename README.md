@@ -30,6 +30,21 @@ Turn on the agent bridge in Settings > Integrations. Each agent has a row there 
 
 Your agent can then list your open comments, read the ones on a file, and resolve them when it's done. Any other agent that speaks MCP over HTTP connects to `http://127.0.0.1:47319/mcp`. The bridge listens on your Mac only.
 
+## Command line
+
+`dotmd` opens a Markdown file in DotMD, or watches a folder:
+
+```
+dotmd plan.md
+dotmd ~/code/api
+```
+
+Install it from Settings > Integrations > Command line, which copies a one-line install command, or from a clone of this repo:
+
+```
+sudo install -m 755 cli/dotmd /usr/local/bin/dotmd
+```
+
 ## Build from source
 
 You need macOS 15 or later, Xcode 27, XcodeGen, and Node 22.
@@ -61,6 +76,7 @@ npm run build
 | `Packages/DotMDRender/` | The document view, the bridge to the renderer, and export. |
 | `Packages/DotMDBridge/` | The agent bridge: a local MCP server that hands your comments to agents. |
 | `QuickLook/` | The Finder Quick Look extension. |
+| `cli/` | The `dotmd` command. |
 | `renderer/` | The Markdown renderer that runs inside the document view. |
 | `fixtures/` | Sample documents for checking the renderer by hand. |
 

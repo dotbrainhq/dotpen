@@ -29,3 +29,8 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - While an agent writes the open file, a pill follows along; when it stops, Review Changes takes you to what changed.
 - A banner when an agent writes a new file, and "Connected to Claude Code in api-gateway" in the Send sheet.
 - A menu bar item with what's being written, new and changed files, and Pause watching for 1 hour.
+- Open anything with ⌘K: recent files, headings in the open file, and commands.
+- A keyboard shortcuts overlay on ? or ⌘/, with Shift-N for the previous change, ⇧⌘M to mark read, ⇧⌘C to copy as prompt, and ⌘+ and ⌘− for text size.
+- Watched files in Spotlight by title, headings and text.
+- Shortcuts actions: Open File, Get Changes Since Last Read, List Open Tasks and Send Comments to Agent.
+- Open in DotMD in Finder's Services menu, and a `dotmd` command that opens files and watches folders.
