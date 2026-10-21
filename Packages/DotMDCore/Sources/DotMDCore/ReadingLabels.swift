@@ -22,6 +22,16 @@ public enum ReadingLabels {
         return "You stopped reading here on " + day(date, now: now, calendar: calendar)
     }
 
+    /// When a comment was written or sent: "now" in its first minute, "2:20 PM" today, "yesterday", or "Oct 18".
+    public static func commentTime(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> String {
+        if abs(now.timeIntervalSince(date)) < 60 { return "now" }
+        if calendar.isDate(date, inSameDayAs: now) { return format(date, "h:mm a", calendar) }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now), calendar.isDate(date, inSameDayAs: yesterday) {
+            return "yesterday"
+        }
+        return day(date, now: now, calendar: calendar)
+    }
+
     private static func day(_ date: Date, now: Date, calendar: Calendar) -> String {
         let sameYear = calendar.component(.year, from: date) == calendar.component(.year, from: now)
         return format(date, sameYear ? "MMM d" : "MMM d, yyyy", calendar)

@@ -115,6 +115,20 @@ public final class LibraryDatabase: Sendable {
                 t.add(column: "readLineAt", .datetime)
             }
         }
+        migrator.registerMigration("v3") { db in
+            try db.create(table: "comment") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.belongsTo("document", onDelete: .cascade).notNull()
+                t.column("quote", .text).notNull()
+                t.column("lineStart", .integer).notNull()
+                t.column("lineEnd", .integer).notNull()
+                t.column("contextHash", .text).notNull()
+                t.column("body", .text).notNull()
+                t.column("status", .text).notNull()
+                t.column("createdAt", .datetime).notNull()
+                t.column("sentAt", .datetime)
+            }
+        }
         return migrator
     }
 
@@ -326,6 +340,47 @@ public final class LibraryDatabase: Sendable {
     /// Deletes the snapshots no document points at.
     private static func pruneSnapshots(in db: Database) throws {
         try db.execute(sql: "DELETE FROM snapshot WHERE hash NOT IN (SELECT readHash FROM document WHERE readHash IS NOT NULL)")
+    }
+
+
+    // MARK: Comments
+
+    @discardableResult
+    public func insert(_ comment: Comment) throws -> Comment {
+        try writer.write { db in
+            var comment = comment
+            try comment.insert(db)
+            return comment
+        }
+    }
+
+    public func update(_ comment: Comment) throws {
+        try writer.write { db in try comment.update(db) }
+    }
+
+    public func deleteComment(id: Int64) throws {
+        _ = try writer.write { db in try Comment.deleteOne(db, key: id) }
+    }
+
+    /// A document's comments in reading order.
+    public func comments(documentID: Int64) throws -> [Comment] {
+        try writer.read { db in
+            try Comment.filter(Comment.Fields.documentID == documentID)
+                .order(Comment.Fields.lineStart, Comment.Fields.createdAt)
+                .fetchAll(db)
+        }
+    }
+
+    /// Every open comment in the library, with its document, in reading order per document.
+    public func openComments() throws -> [(Comment, Document)] {
+        try writer.read { db in
+            let comments = try Comment.filter(Comment.Fields.status == Comment.Status.open.rawValue)
+                .order(Comment.Fields.documentID, Comment.Fields.lineStart, Comment.Fields.createdAt)
+                .fetchAll(db)
+            return try comments.compactMap { comment in
+                try Document.fetchOne(db, key: comment.documentID).map { (comment, $0) }
+            }
+        }
     }
 
 }
