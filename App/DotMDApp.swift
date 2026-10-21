@@ -1,19 +1,15 @@
+import CoreSpotlight
 import DotMDCore
 import SwiftUI
 
 @main
 struct DotMDApp: App {
-    @State private var library: Library
-    @State private var bridge: AgentBridge
-    @State private var activity: AgentActivity
-    @State private var navigator = FilesNavigator()
-
-    init() {
-        let library = Library.makeDefault()
-        _library = State(initialValue: library)
-        _bridge = State(initialValue: AgentBridge(library: library))
-        _activity = State(initialValue: AgentActivity(library: library))
-    }
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @State private var library = AppServices.library
+    @State private var bridge = AppServices.bridge
+    @State private var activity = AppServices.activity
+    @State private var spotlight = AppServices.spotlight
+    @State private var navigator = AppServices.navigator
 
     var body: some Scene {
         Window("DotMD", id: "files") {
@@ -23,17 +19,23 @@ struct DotMDApp: App {
                 .environment(bridge)
                 .environment(activity)
                 .task {
-                    await library.start()
-                    bridge.startIfEnabled()
-                    activity.start()
+                    await AppServices.start()
                     #if DEBUG
                     await DebugWorkspace.open(in: library)
                     #endif
+                }
+                .onChange(of: library.folders) { spotlight.update() }
+                // A Spotlight result selects its file here.
+                .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                    guard let identifier = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                          let document = library.document(at: SpotlightIndex.fileURL(fromIdentifier: identifier)) else { return }
+                    navigator.requested = document.key
                 }
         }
         // The prototype's window: 1200 by 806, with no title bar over the sidebar panel.
         .defaultSize(width: 1200, height: 806)
         .windowStyle(.hiddenTitleBar)
+        .handlesExternalEvents(matching: [CSSearchableItemActionType])
         .commands {
             FilesCommands()
             SettingsCommands()
@@ -46,11 +48,8 @@ struct DotMDApp: App {
                 .environment(library)
                 .environment(bridge)
                 .environment(activity)
-                .task {
-                    await library.start()
-                    bridge.startIfEnabled()
-                    activity.start()
-                }
+                .environment(spotlight)
+                .task { await AppServices.start() }
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
@@ -76,11 +75,7 @@ struct DotMDApp: App {
                 .environment(library)
                 .environment(bridge)
                 .environment(activity)
-                .task {
-                    await library.start()
-                    bridge.startIfEnabled()
-                    activity.start()
-                }
+                .task { await AppServices.start() }
         }
         .commands { ExportCommands() }
     }

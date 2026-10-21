@@ -172,9 +172,34 @@ private struct FoldersSettings: View {
 private struct IntegrationsSettings: View {
     @Environment(AgentBridge.self) private var bridge
     @Environment(AgentActivity.self) private var activity
+    @Environment(SpotlightIndex.self) private var spotlight
+
+    /// Writes cli/dotmd to /usr/local/bin. The person runs it; a sandboxed app can't install a command.
+    static let installCommand = #"printf '%s\n' '#!/bin/sh' '[ "$#" -eq 0 ] && set -- .' 'exec open -b app.dotmd.DotMD "$@"' | sudo tee /usr/local/bin/dotmd > /dev/null && sudo chmod +x /usr/local/bin/dotmd"#
 
     var body: some View {
         VStack(spacing: 0) {
+            SettingsRow(title: "Spotlight", detail: "Find headings and text from watched files in Spotlight.") {
+                Toggle("Spotlight", isOn: Binding(get: { spotlight.isEnabled }, set: { spotlight.setEnabled($0) }))
+                    .toggleStyle(SwitchToggleStyle())
+            }
+            SettingsDivider()
+            SettingsRow(title: "Shortcuts", detail: "Actions: Open file, Get changes since last read, List open tasks, Send comments to agent.") {
+                Button("Open Shortcuts") {
+                    if let url = URL(string: "shortcuts://") { NSWorkspace.shared.open(url) }
+                }
+                .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+            }
+            SettingsDivider()
+            SettingsRow(title: "Command line", detail: "Run the copied command once in Terminal. Then try dotmd plan.md.") {
+                Button("Copy Command") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Self.installCommand, forType: .string)
+                }
+                .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                .accessibilityLabel("Copy the command line install command")
+            }
+            SettingsDivider()
             SettingsRow(title: "Agent bridge", detail: "An MCP server so your agents can read your comments and resolve them.") {
                 Toggle("Agent bridge", isOn: Binding(get: { bridge.isEnabled }, set: { bridge.setEnabled($0) }))
                     .toggleStyle(SwitchToggleStyle())
