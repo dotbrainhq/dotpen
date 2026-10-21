@@ -308,6 +308,13 @@ public final class LibraryDatabase: Sendable {
         return data.flatMap(Snapshots.decompress).map { String(decoding: $0, as: UTF8.self) }
     }
 
+    /// When the snapshot under a hash was taken, or nil when there is none.
+    public func snapshotTakenAt(hash: String) throws -> Date? {
+        try writer.read { db in
+            try Date.fetchOne(db, sql: "SELECT takenAt FROM snapshot WHERE hash = ?", arguments: [hash])
+        }
+    }
+
     /// Stores bytes under their hash unless that snapshot is already there.
     private static func saveSnapshot(_ content: Data, hash: String, in db: Database) throws {
         try db.execute(

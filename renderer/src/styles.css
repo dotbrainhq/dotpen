@@ -142,6 +142,15 @@ html::-webkit-scrollbar { display: none; }
 /* The dotted line where reading stopped. */
 .memory { display: flex; align-items: center; gap: 10px; margin: 26px 0 4px; font: 500 11px var(--font-ui); color: var(--ink-4); }
 .memory::before, .memory::after { content: ""; flex: 1; height: 1px; background: repeating-linear-gradient(90deg, var(--ink-5) 0 4px, transparent 4px 8px); }
+
+/* Live writing: new blocks glow and cool to normal over 1.5 s; the caret blinks while the file is being written. */
+.live { border-radius: 6px; animation: live-cool 1.5s cubic-bezier(.2, .8, .2, 1); }
+@keyframes live-cool {
+  from { background-color: var(--accent-wash); box-shadow: 0 0 0 4px var(--accent-wash); }
+  to { background-color: transparent; box-shadow: 0 0 0 4px transparent; }
+}
+.caret { display: inline-block; width: 2px; height: 1.05em; background: var(--accent); vertical-align: -0.15em; margin-left: 2px; animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
 .doc hr { border: 0; height: 1px; background: var(--line); margin: 2em 0; }
 .doc img { max-width: 100%; height: auto; border-radius: 8px; }
 /* Raw HTML from GitHub-style READMEs. */
@@ -219,6 +228,7 @@ html::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .copy { transition: none; }
   [data-line], .chip { transition: none; }
+  .caret { animation: none; } .live { animation-duration: 120ms; }
 }
 
 /* Paper is always white, whatever page color the window uses. */
@@ -235,6 +245,7 @@ html::-webkit-scrollbar { display: none; }
   .chip { display: none; }
   .map { display: none; }
   .memory { display: none; }
+  .caret { display: none; }
   .del, .del-gap, .gut, .removed { display: none; } .ins { color: inherit; background: none; } .added::before { display: none; }
   :root[data-paper] .mermaid-block .diagram-light { display: block; }
   :root[data-paper] .mermaid-block .diagram-dark { display: none; }

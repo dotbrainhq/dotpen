@@ -193,6 +193,14 @@ public final class Library {
         return try? database.snapshotText(hash: hash)
     }
 
+    /// When the person last read the file. Files read by a folder's first scan, or before read times were kept,
+    /// date from when DotMD kept their text.
+    public func lastReadDate(for document: Document) -> Date? {
+        if let date = document.lastReadAt { return date }
+        guard let hash = document.readHash else { return nil }
+        return try? database.snapshotTakenAt(hash: hash)
+    }
+
     public func setReadLine(_ document: Document, line: Int) {
         if let updated = try? database.setReadLine(documentID: document.key, line: line) { put(updated) }
     }

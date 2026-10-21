@@ -89,3 +89,26 @@ private func makeFolder(_ database: LibraryDatabase) throws -> Int64 {
     #expect(document.readState == .read)
     #expect(library.lastReadText(for: document) == "# Plan\n\nSecond version.")
 }
+
+@MainActor @Test func filesReadByTheFirstScanDateFromWhenTheirTextWasKept() async throws {
+    let temp = try TempFolder()
+    try temp.write("plan.md", "# Plan\n\nFirst version.")
+    let library = Library(database: try .inMemory())
+    let before = Date.now.addingTimeInterval(-1)
+    try await library.addFolder(temp.url)
+    let document = try #require(library.folders.first?.documents.first)
+    #expect(document.lastReadAt == nil)
+    let date = try #require(library.lastReadDate(for: document))
+    #expect(date >= before && date <= .now.addingTimeInterval(1))
+}
+
+@MainActor @Test func aReadDateWinsOverTheSnapshotDate() async throws {
+    let temp = try TempFolder()
+    try temp.write("plan.md", "# Plan")
+    let library = Library(database: try .inMemory())
+    try await library.addFolder(temp.url)
+    var document = try #require(library.folders.first?.documents.first)
+    library.markRead(document, text: "# Plan")
+    document = try #require(library.folders.first?.documents.first)
+    #expect(library.lastReadDate(for: document) == document.lastReadAt)
+}

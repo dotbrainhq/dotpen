@@ -20,6 +20,8 @@ struct ReaderScreen: View {
     @State private var scrolledLine: Int?
     /// The previous visit's reading line is shown once, when the file opens, before this visit moves it.
     @State private var memoryShown = false
+    /// The start line of the last block written while the file was open, for the caret.
+    @State private var lastWrittenLine: Int?
 
     init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
         self.fileURL = fileURL
@@ -53,6 +55,9 @@ struct ReaderScreen: View {
             }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
+            }
+            .onChange(of: isBeingWritten) { _, writing in
+                controller.send(.setWriting(writing, lastLine: lastWrittenLine))
             }
             .task(id: scrolledLine) {
                 // Saves a second after scrolling stops, not on every pause.
@@ -195,6 +200,11 @@ struct ReaderScreen: View {
     }
 
     /// Diffs the file against the text last read and marks the page. A changed file with nothing to show, because
+    /// True while an agent is writing the file (M2's heuristic until M5 knows the session).
+    private var isBeingWritten: Bool {
+        documentKey.map { library.writing.contains($0) } ?? false
+    }
+
     /// DotMD has no copy of what was read or only front matter changed, is marked read instead.
     private func refreshMarks() async {
         guard let document = libraryDocument, document.readState == .changed else { return }
@@ -211,7 +221,7 @@ struct ReaderScreen: View {
             return
         }
         changes = result
-        controller.send(.applyMarks(changes: result, since: ReadingLabels.since(document.lastReadAt)))
+        controller.send(.applyMarks(changes: result, since: ReadingLabels.since(library.lastReadDate(for: document))))
     }
 
     /// Shows where reading stopped last time, once per visit. Nothing shows when it stopped at the top.
@@ -258,8 +268,17 @@ struct ReaderScreen: View {
         guard let data, !Task.isCancelled else { return }
         let newText = String(decoding: data, as: UTF8.self)
         guard newText != text else { return }
+        let previous = text
         text = newText
         controller.send(.render(markdown: newText, options: options))
+        // What just changed glows, whatever the person has read.
+        let written = await Task.detached { ChangeDiff.changes(from: previous, to: newText) }.value
+        let lines = (written.added.map(\.start) + written.changed.map(\.start)).sorted()
+        if !lines.isEmpty {
+            lastWrittenLine = lines.last
+            controller.send(.markLive(lines: lines))
+            controller.send(.setWriting(isBeingWritten, lastLine: lastWrittenLine))
+        }
         await refreshMarks()
     }
 

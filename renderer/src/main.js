@@ -6,6 +6,7 @@ import { applyMarks, fadeMarks, removeMarks, blockAt } from './marks.js';
 import { showChip, nextChangeLine, revealBlock } from './chip.js';
 import { createMap } from './map.js';
 import { showMemory, topLine } from './memory.js';
+import { markLive as glow, setWriting as showCaret } from './live.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -17,6 +18,8 @@ let marks = null;
 const map = createMap(document);
 // The line where reading stopped last time, put back after every render.
 let memory = null;
+// Whether the file is being written, and its last written block, put back after every render.
+let writing = { writing: false, lastLine: null };
 let lastSentLine = null;
 let scrollTimer = null;
 
@@ -60,6 +63,7 @@ function nextChange() {
 // DotMD's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
 function decorate(doc) {
   if (memory) showMemory(doc, memory);
+  showCaret(doc, writing.writing, writing.lastLine);
   map.setChanges(marks ? changeLines(marks.changes) : []);
   if (!marks) return;
   applyMarks(doc, marks.changes);
@@ -261,6 +265,13 @@ window.DotMD = {
   setMemory({ line, label }) {
     memory = line ? { line, label } : null;
     showMemory(document.getElementById('doc'), memory ?? {});
+  },
+  markLive(lines) {
+    glow(document.getElementById('doc'), lines);
+  },
+  setWriting({ writing: isWriting, lastLine }) {
+    writing = { writing: isWriting, lastLine: lastLine ?? null };
+    showCaret(document.getElementById('doc'), writing.writing, writing.lastLine);
   },
   setLayout(layout) {
     root.dataset.layout = layout === 'document' ? 'document' : 'files';
