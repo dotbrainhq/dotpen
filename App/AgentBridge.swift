@@ -1,3 +1,4 @@
+import AppKit
 import DotMDBridge
 import DotMDCore
 import Foundation
@@ -75,7 +76,7 @@ final class AgentBridge {
 
     func start() {
         guard server == nil else { return }
-        let tools = MCPTools(source: LibraryCommentSource(library: library), version: Self.version) { [weak self] name in
+        let tools = MCPTools(source: LibraryCommentSource(library: library), version: Self.version, icon: Self.icon) { [weak self] name in
             Task { @MainActor in self?.connected(name) }
         }
         let server = BridgeServer(tools: tools)
@@ -103,6 +104,13 @@ final class AgentBridge {
     private func connected(_ name: String) {
         lastAgent = name
         UserDefaults.standard.set(name, forKey: Self.lastAgentKey)
+    }
+
+    /// The 128 point brand icon, as the bridge's MCP icon.
+    private static var icon: Data? {
+        guard let image = NSImage(named: "BrandIconSmall"), let tiff = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
+        return bitmap.representation(using: .png, properties: [:])
     }
 
     private static var version: String {

@@ -13,12 +13,15 @@ public struct MCPTools: Sendable {
 
     let source: any CommentSource
     let version: String
+    /// DotMD's icon as PNG, sent inside the reply so the agent's app fetches nothing to show it.
+    let icon: Data?
     /// Called with the agent's name, like "Claude Code", each time one connects.
     let connected: @Sendable (String) -> ()
 
-    public init(source: any CommentSource, version: String, connected: @escaping @Sendable (String) -> () = { _ in }) {
+    public init(source: any CommentSource, version: String, icon: Data? = nil, connected: @escaping @Sendable (String) -> () = { _ in }) {
         self.source = source
         self.version = version
+        self.icon = icon
         self.connected = connected
     }
 
@@ -48,7 +51,7 @@ public struct MCPTools: Sendable {
             return Self.result(id: id, [
                 "protocolVersion": params["protocolVersion"] as? String ?? Self.latestProtocol,
                 "capabilities": ["tools": [String: Any]()],
-                "serverInfo": ["name": Self.serverName, "version": version],
+                "serverInfo": serverInfo,
                 "instructions": Self.instructions,
             ])
         case "ping":
@@ -60,6 +63,20 @@ public struct MCPTools: Sendable {
         default:
             return Self.error(id: id, code: -32601, message: "Method not found: \(method)")
         }
+    }
+
+    /// The name, title, description and icon MCP's 2025-11-25 spec lets an agent's app show for the server.
+    private var serverInfo: [String: Any] {
+        var info: [String: Any] = [
+            "name": Self.serverName,
+            "title": "DotMD",
+            "version": version,
+            "description": "Review comments you wrote on Markdown files in DotMD, for your agent to read and resolve.",
+        ]
+        if let icon {
+            info["icons"] = [["src": "data:image/png;base64," + icon.base64EncodedString(), "mimeType": "image/png", "sizes": ["128x128"]]]
+        }
+        return info
     }
 
     static var toolList: [[String: Any]] {

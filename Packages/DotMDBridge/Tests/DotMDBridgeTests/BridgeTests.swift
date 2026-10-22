@@ -46,6 +46,18 @@ private func call(_ tools: MCPTools, _ name: String, _ arguments: [String: Any] 
         #expect((result["serverInfo"] as? [String: Any])?["name"] as? String == "dotmd")
     }
 
+    @Test func initializeNamesDotMDWithItsIcon() async throws {
+        let tools = MCPTools(source: source, version: "0.1.0", icon: Data([0x89, 0x50, 0x4E, 0x47]))
+        let response = try #require(await tools.respond(to: ["jsonrpc": "2.0", "id": 1, "method": "initialize"]))
+        let info = try #require((response["result"] as? [String: Any])?["serverInfo"] as? [String: Any])
+        #expect(info["title"] as? String == "DotMD")
+        #expect((info["description"] as? String)?.isEmpty == false)
+        let icon = try #require((info["icons"] as? [[String: Any]])?.first)
+        #expect(icon["src"] as? String == "data:image/png;base64,iVBORw==")
+        #expect(icon["mimeType"] as? String == "image/png")
+        #expect(icon["sizes"] as? [String] == ["128x128"])
+    }
+
     @Test func initializeNamesTheAgentThatConnected() async {
         let names = Names()
         let tools = MCPTools(source: source, version: "0.1.0") { name in Task { await names.add(name) } }
