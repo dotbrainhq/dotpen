@@ -197,7 +197,13 @@ struct CommandPalette: View {
         .background(Palette.pop, in: RoundedRectangle(cornerRadius: 16))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .modifier(ShadowThree(shape: RoundedRectangle(cornerRadius: 16), fill: Palette.pop, dark: colorScheme == .dark))
-        .onAppear { fieldFocused = true }
+        .defaultFocus($fieldFocused, true)
+        .task {
+            // The palette arrives during the overlay's transition, before its field is in the window, so focus set on
+            // appear is lost and keys keep going to the page. A beat later the field takes them.
+            try? await Task.sleep(for: .milliseconds(50))
+            fieldFocused = true
+        }
         .onChange(of: query) { selected = 0 }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Open anything")
