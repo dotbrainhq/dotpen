@@ -264,12 +264,11 @@ private func makeLibrary() throws -> Library {
 
 @MainActor @Test func anEventForARemovedRootLosesAccess() async throws {
     let temp = try TempFolder()
-    let elsewhere = try TempFolder()
     try temp.write("README.md", "# Repo")
     let library = try makeLibrary()
     try await library.addFolder(temp.url)
     let id = try #require(library.folders.first?.id)
-    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    try FileManager.default.removeItem(at: temp.url)
     await library.handle([temp.url.path], in: id)
     #expect(library.folders.first?.accessLost == true)
     #expect(library.folders.first?.documents.map(\.relativePath) == ["README.md"])
@@ -296,7 +295,6 @@ private func readStates(_ library: Library) -> [String: ReadState] {
 
 @MainActor @Test func aRescanOfAVanishedRootKeepsTheRows() async throws {
     let temp = try TempFolder()
-    let elsewhere = try TempFolder()
     try temp.write("README.md", "# Repo")
     try temp.write("plan.md", "# Plan")
     let library = try makeLibrary()
@@ -306,7 +304,7 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     try await Task.sleep(for: .milliseconds(100))
     library.markUnread(try #require(library.folders.first?.documents.first { $0.relativePath == "plan.md" }))
     let before = readStates(library)
-    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    try FileManager.default.removeItem(at: temp.url)
     library.showIgnored = true
     #expect(try await eventually { library.folders.first?.accessLost == true })
     #expect(readStates(library) == before)
@@ -315,7 +313,6 @@ private func readStates(_ library: Library) -> [String: ReadState] {
 
 @MainActor @Test func filesThatVanishWithTheRootKeepTheirRows() async throws {
     let temp = try TempFolder()
-    let elsewhere = try TempFolder()
     try temp.write("README.md", "# Repo")
     try temp.write("plan.md", "# Plan")
     let library = try makeLibrary()
@@ -324,7 +321,7 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     library.removeFolderWatchersForTesting()
     let before = readStates(library)
     let paths = ["README.md", "plan.md"].map { temp.url.appending(path: $0).path }
-    try FileManager.default.moveItem(at: temp.url, to: elsewhere.url.appending(path: "moved"))
+    try FileManager.default.removeItem(at: temp.url)
     await library.handle(paths.map { FolderEvent(path: $0, isDirectory: false, isRemoved: true, isRenamed: false) }, in: id)
     #expect(library.folders.first?.accessLost == true)
     #expect(readStates(library) == before)
@@ -543,4 +540,30 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     document = try #require(library.folders.first?.documents.first)
     #expect(library.lastReadText(for: document) == "- [x] Ship it\n")
     #expect(document.lastReadAt == readAt)
+}
+
+@MainActor @Test func aMovedRootIsFollowedWithItsRows() async throws {
+    let temp = try TempFolder()
+    let elsewhere = try TempFolder()
+    try temp.write("README.md", "# Repo")
+    try temp.write("plan.md", "# Plan")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    library.markUnread(try #require(library.folders.first?.documents.first { $0.relativePath == "plan.md" }))
+    let before = readStates(library)
+    let moved = elsewhere.url.appending(path: "moved")
+    try FileManager.default.moveItem(at: temp.url, to: moved)
+    await library.handle([temp.url.path], in: id)
+    #expect(library.folders.first?.accessLost == false)
+    #expect(library.folders.first?.url?.path == moved.path)
+    #expect(try await eventually { readStates(library) == before })
+    #expect(library.watcherCountForTesting == 1)
+}
+
+@Test func foldersInTheTrashAreNotFollowed() {
+    #expect(FolderAccess.isInTrash(URL(fileURLWithPath: "/Users/me/.Trash/web-app")))
+    #expect(FolderAccess.isInTrash(URL(fileURLWithPath: "/Volumes/Work/.Trashes/501/web-app")))
+    #expect(!FolderAccess.isInTrash(URL(fileURLWithPath: "/Users/me/code/web-app")))
+    #expect(!FolderAccess.isInTrash(URL(fileURLWithPath: "/Users/me/code/Trash-notes")))
 }

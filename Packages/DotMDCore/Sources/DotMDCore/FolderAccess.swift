@@ -28,6 +28,11 @@ public enum FolderAccess {
         url.stopAccessingSecurityScopedResource()
     }
 
+    /// A folder moved to the Trash was deleted as far as the person is concerned, though its bookmark still finds it.
+    public static func isInTrash(_ url: URL) -> Bool {
+        url.pathComponents.contains { $0 == ".Trash" || $0 == ".Trashes" }
+    }
+
     /// The real path with symlinks resolved, in the form FSEvents reports. See Paths.canonical.
     public static func canonical(_ url: URL) -> URL {
         Paths.canonical(url)

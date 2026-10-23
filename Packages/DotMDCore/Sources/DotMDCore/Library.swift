@@ -323,13 +323,17 @@ public final class Library {
     }
 
     /// Resolves the folder's bookmark and starts watching it. Returns false, with the folder marked access lost,
-    /// when the bookmark doesn't resolve.
+    /// when the bookmark doesn't resolve, or finds the folder gone or in the Trash.
     private func connect(_ folder: WatchedFolder) -> Bool {
         guard let id = folder.id else { return false }
         watchers.removeValue(forKey: id)?.cancel()
         // The new access starts before the old one stops, so the folder is never left without a grant in between.
-        let resolved = try? FolderAccess.resolve(folder.bookmark)
+        var resolved = try? FolderAccess.resolve(folder.bookmark)
         releaseAccess(id)
+        if let found = resolved, FolderAccess.isInTrash(found.url) || !Self.isDirectory(found.url) {
+            FolderAccess.stop(found.url)
+            resolved = nil
+        }
         guard let resolved else {
             update(id) { state in
                 state.url = nil
@@ -358,8 +362,19 @@ public final class Library {
         if let url = accessURLs.removeValue(forKey: id) { FolderAccess.stop(url) }
     }
 
-    /// The folder's root went away: keep its rows and read state, show it as needing reconnection.
+    private static func isDirectory(_ url: URL) -> Bool {
+        var isDirectory: ObjCBool = false
+        return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    /// The folder's root went away. A moved folder's bookmark still finds it, so DotMD watches it there, as a relaunch
+    /// would, and scans it behind the current job. A deleted folder keeps its rows and read state and shows as
+    /// needing reconnection.
     private func loseAccess(_ id: Int64) {
+        if let folder = state(id)?.folder, connect(folder) {
+            _ = queueRescan(id)
+            return
+        }
         watchers.removeValue(forKey: id)?.cancel()
         releaseAccess(id)
         update(id) { state in
