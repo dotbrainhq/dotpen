@@ -37,10 +37,21 @@ struct DotMDApp: App {
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [CSSearchableItemActionType])
         .commands {
+            AboutCommands()
             FilesCommands()
             SettingsCommands()
             PaletteCommands()
         }
+
+        Window("About DotMD", id: "about") {
+            AboutView()
+                // As in the system's About panels, only the close button works.
+                .windowMinimizeBehavior(.disabled)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+        .restorationBehavior(.disabled)
 
         // A plain window rather than the Settings scene, which keeps a title bar the prototype doesn't have.
         Window("Settings", id: "settings") {
