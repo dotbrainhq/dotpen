@@ -20,6 +20,9 @@ struct FilesWindow: View {
     @State private var sheet: AnyView?
     /// The palette or the shortcuts, over the whole window.
     @State private var overlay: WindowOverlay?
+    /// The last file shown. When it's moved or deleted its row goes, but the reader keeps its last version up,
+    /// under the prototype's notice, until the person closes it.
+    @State private var lastDocument: DotMDCore.Document?
 
     /// The prototype's sidebar column.
     static let sidebarWidth: CGFloat = 272
@@ -121,19 +124,31 @@ struct FilesWindow: View {
     }
 
     @ViewBuilder private var detail: some View {
-        if let document = selectedDocument {
-            LibraryReader(document: document, openDocument: openDocument)
+        if let document = selectedDocument ?? (lastDocument?.key == selection ? lastDocument : nil) {
+            LibraryReader(document: document, openDocument: openDocument) { selection = nil }
                 .id(document.key)
+                .onChange(of: selectedDocument, initial: true) { _, current in
+                    if let current { lastDocument = current }
+                }
         } else {
             VStack(spacing: 0) {
                 TopBar(chrome: chrome, title: "", path: "") {
                     EmptyView()
                 }
-                ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if isEveryFolderEmpty {
+                    EmptyFoldersView(folders: library.folders)
+                } else {
+                    ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
             .navigationTitle("DotMD")
         }
+    }
+
+    /// Every watched folder is read and holds no Markdown: the prototype's empty state, not "Choose a file".
+    private var isEveryFolderEmpty: Bool {
+        !library.folders.isEmpty && library.folders.allSatisfy { $0.status == .ready && !$0.accessLost && $0.documents.isEmpty }
     }
 
     private func showSheet(_ view: AnyView?) {

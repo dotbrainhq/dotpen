@@ -1,4 +1,5 @@
 import AppKit
+import CryptoKit
 import DotMDBridge
 import DotMDCore
 import DotMDRender
@@ -8,6 +9,8 @@ struct ReaderScreen: View {
     let fileURL: URL?
     /// Opens a relative .md link. Without one, the link opens in a new window.
     let onOpenDocument: ((URL) -> ())?
+    /// Close on the deleted-file notice. A document window closes itself instead.
+    let onClose: (() -> ())?
 
     @Environment(Library.self) private var library
     @Environment(AgentBridge.self) private var bridge
@@ -40,11 +43,21 @@ struct ReaderScreen: View {
     @State private var overlay: WindowOverlay?
     /// The file's headings, for the palette.
     @State private var headings: [DocumentHeading] = []
+    /// The file went away: the reader keeps its last version, faded, under a notice.
+    @State private var fileGone = false
+    /// The library's record of the file, kept so the title bar still names it after the file goes.
+    @State private var lastLibraryDocument: DotMDCore.Document?
+    /// When the reader last read the file from disk, for the deleted-file notice.
+    @State private var readFromDiskAt = Date.now
+    /// Show All on the large-file notice.
+    @State private var showAll = false
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil) {
+    init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil, onClose: (() -> ())? = nil) {
         self.fileURL = fileURL
         self.onOpenDocument = onOpenDocument
+        self.onClose = onClose
         _text = State(initialValue: text)
     }
 
@@ -75,7 +88,7 @@ struct ReaderScreen: View {
             .onChange(of: assetRoot) { _, root in
                 // A window opened before the library loaded starts with the file's own folder as its image root.
                 controller.setDocumentLocation(fileURL, root: root)
-                controller.send(.render(markdown: text, options: options))
+                controller.send(.render(markdown: shownMarkdown, options: options))
             }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
@@ -98,6 +111,15 @@ struct ReaderScreen: View {
             }
             .onChange(of: showingComments) { _, open in
                 controller.send(.setPanel(open))
+            }
+            .onChange(of: notice, initial: true) { _, notice in
+                controller.send(.setNotice(notice))
+            }
+            .onChange(of: libraryDocument, initial: true) { _, document in
+                if let document { lastLibraryDocument = document }
+            }
+            .onChange(of: showAll) {
+                controller.send(.render(markdown: shownMarkdown, options: options))
             }
             .onChange(of: writingAgent) { previous, agent in
                 if let agent {
@@ -206,6 +228,66 @@ struct ReaderScreen: View {
         )
     }
 
+    // MARK: Edge states
+
+    /// Past 1 MB the reader shows the first 2,000 lines, as the spec asks, until Show All.
+    private static let largeFileBytes = 1_000_000
+    private static let largeFileLines = 2_000
+
+    private var isLarge: Bool { text.utf8.count > Self.largeFileBytes }
+
+    private var shownMarkdown: String {
+        guard isLarge, !showAll else { return text }
+        var newlines = 0
+        for index in text.indices where text[index] == "\n" {
+            newlines += 1
+            if newlines == Self.largeFileLines { return String(text[..<index]) }
+        }
+        return text
+    }
+
+    /// The prototype's notices above the page: a file that went away, then a large file shown in part.
+    private var notice: PageNotice? {
+        if fileGone {
+            return PageNotice(
+                icon: "trash",
+                title: "\(fileURL?.lastPathComponent ?? "This file") was moved or deleted.",
+                text: "You're seeing the last version DotMD read, at \(readFromDiskAt.formatted(date: .omitted, time: .shortened)).",
+                buttons: [PageNotice.Button(id: "find", label: "Find It"), PageNotice.Button(id: "close", label: "Close", quiet: true)],
+                dim: true
+            )
+        }
+        if isLarge, !showAll {
+            let size = ByteCountFormatter.string(fromByteCount: Int64(text.utf8.count), countStyle: .file)
+            return PageNotice(
+                icon: "gauge",
+                title: "Large file, \(size).",
+                text: "Showing the first 2,000 lines so scrolling stays smooth.",
+                buttons: [PageNotice.Button(id: "showAll", label: "Show All")]
+            )
+        }
+        return nil
+    }
+
+    /// Find It: a watched file with the same content is this one moved; otherwise the person points at it.
+    private func findMovedFile() {
+        let hash = SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+        let moved = library.folders.lazy.flatMap(\.documents).first { $0.contentHash == hash }
+        if let moved, let url = library.url(for: moved) {
+            if let onOpenDocument { onOpenDocument(url) } else { FileActions.openInNewWindow(url) }
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.markdown]
+        panel.directoryURL = fileURL?.deletingLastPathComponent()
+        panel.message = "Find where \(fileURL?.lastPathComponent ?? "the file") went."
+        panel.prompt = "Open"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        if let onOpenDocument { onOpenDocument(url) } else { FileActions.openInNewWindow(url) }
+    }
+
     // MARK: Agents
 
     /// The agent writing this file right now, by name, when its session log says so.
@@ -229,7 +311,7 @@ struct ReaderScreen: View {
 
     /// The prototype shows the arrival banner in the document layout only, for a new file other than this one.
     private var shownArrival: AgentWrite? {
-        guard layout == .document, finishedBy == nil, let arrival = activity.arrival,
+        guard layout == .document, finishedBy == nil, !fileGone, let arrival = activity.arrival,
               arrival.path != fileURL.map(AgentActivity.path) else { return nil }
         let document = library.document(at: URL(fileURLWithPath: arrival.path))
         return document.map { $0.readState == .new } ?? true ? arrival : nil
@@ -237,7 +319,10 @@ struct ReaderScreen: View {
 
     /// One notice at a time: finished beats the arrival banner, which beats following.
     @ViewBuilder private var agentPill: some View {
-        if let finishedBy {
+        if fileGone {
+            // The deleted-file notice comes first; one notice at a time.
+            EmptyView()
+        } else if let finishedBy {
             FinishedPill(
                 agent: finishedBy,
                 changes: changes.added.count + changes.changed.count + changes.removed.count,
@@ -442,14 +527,18 @@ struct ReaderScreen: View {
         documentKey.flatMap { library.document(key: $0) }
     }
 
+    private var shownDocument: DotMDCore.Document? {
+        libraryDocument ?? (fileGone ? lastLibraryDocument : nil)
+    }
+
     /// The document's own title, else its file name.
     private var displayTitle: String {
-        libraryDocument?.title ?? fileURL?.lastPathComponent ?? "Untitled"
+        shownDocument?.title ?? fileURL?.lastPathComponent ?? "Untitled"
     }
 
     /// "api-gateway/docs/plans/rate-limiter.md" for a library file; the parent folder and file name otherwise.
     private var displayPath: String {
-        if let document = libraryDocument, let folder = library.folders.first(where: { $0.id == document.folderID }) {
+        if let document = shownDocument, let folder = library.folders.first(where: { $0.id == document.folderID }) {
             return folder.folder.name + "/" + document.relativePath
         }
         guard let fileURL else { return "" }
@@ -552,7 +641,7 @@ struct ReaderScreen: View {
         controller.onMessage = handle
         controller.setDocumentLocation(fileURL, root: assetRoot)
         controller.send(.setLayout(layout))
-        controller.send(.render(markdown: text, options: options))
+        controller.send(.render(markdown: shownMarkdown, options: options))
     }
 
     /// Runs for as long as the window is open. SwiftUI cancels the task on close, which ends the loop and the observer.
@@ -571,12 +660,20 @@ struct ReaderScreen: View {
 
     private func reload(from url: URL) async {
         let data = await Task.detached { try? Data(contentsOf: url) }.value
-        guard let data, !Task.isCancelled else { return }
+        guard !Task.isCancelled else { return }
+        guard let data else {
+            // Agents and editors often save by replacing the file, so it can be missing for a moment.
+            try? await Task.sleep(for: .milliseconds(500))
+            if !FileManager.default.fileExists(atPath: url.path) { fileGone = true }
+            return
+        }
+        fileGone = false
+        readFromDiskAt = .now
         let newText = String(decoding: data, as: UTF8.self)
         guard newText != text else { return }
         let previous = text
         text = newText
-        controller.send(.render(markdown: newText, options: options))
+        controller.send(.render(markdown: shownMarkdown, options: options))
         // What just changed glows, whatever the person has read.
         let written = await Task.detached { ChangeDiff.changes(from: previous, to: newText) }.value
         let lines = (written.added.map(\.start) + written.changed.map(\.start)).sorted()
@@ -615,6 +712,13 @@ struct ReaderScreen: View {
             if let filesChrome { filesChrome.showOverlay(.shortcuts) } else { overlay = .shortcuts }
         case .toggleFollow:
             toggleFollow()
+        case let .noticeAction(id):
+            switch id {
+            case "showAll": showAll = true
+            case "find": findMovedFile()
+            case "close": if let onClose { onClose() } else { dismiss() }
+            default: break
+            }
         case let .composing(active):
             composing = active
         case let .copyPrompt(line, quote):

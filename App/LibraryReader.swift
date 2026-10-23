@@ -6,6 +6,9 @@ struct LibraryReader: View {
     @Environment(Library.self) private var library
     let document: DotMDCore.Document
     let openDocument: (URL) -> ()
+    /// Close on the deleted-file notice: the Files window lets go of the file.
+    var close: () -> () = {}
+    @Environment(\.filesChrome) private var filesChrome
     @State private var text: String?
     @State private var failed = false
     @State private var attempt = 0
@@ -13,8 +16,17 @@ struct LibraryReader: View {
     var body: some View {
         let url = library.url(for: document)
         Group {
-            if let text, let url {
-                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument)
+            if let folder = library.folders.first(where: { $0.id == document.folderID }), folder.accessLost {
+                VStack(spacing: 0) {
+                    if let filesChrome {
+                        TopBar(chrome: filesChrome, title: document.title ?? document.relativePath, path: folder.folder.name + "/" + document.relativePath) {
+                            EmptyView()
+                        }
+                    }
+                    AccessLostView(folder: folder)
+                }
+            } else if let text, let url {
+                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument, onClose: close)
             } else if failed {
                 ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
             } else {
