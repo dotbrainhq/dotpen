@@ -266,8 +266,8 @@ struct ReaderScreen: View {
         if fileGone {
             return PageNotice(
                 icon: "trash",
-                title: "\(fileURL?.lastPathComponent ?? "This file") was moved or deleted.",
-                text: "You're seeing the last version DotMD read, at \(readFromDiskAt.formatted(date: .omitted, time: .shortened)).",
+                title: "\(fileURL?.lastPathComponent ?? "This file") has gone missing.",
+                text: "You're reading the copy from \(readFromDiskAt.formatted(date: .omitted, time: .shortened)).",
                 buttons: [PageNotice.Button(id: "find", label: "Find It"), PageNotice.Button(id: "close", label: "Close", quiet: true)],
                 dim: true
             )
@@ -276,8 +276,8 @@ struct ReaderScreen: View {
             let size = ByteCountFormatter.string(fromByteCount: Int64(text.utf8.count), countStyle: .file)
             return PageNotice(
                 icon: "gauge",
-                title: "Large file, \(size).",
-                text: "Showing the first 2,000 lines so scrolling stays smooth.",
+                title: "This one's big, \(size).",
+                text: "DotMD shows the first 2,000 lines so it stays quick.",
                 buttons: [PageNotice.Button(id: "showAll", label: "Show All")]
             )
         }

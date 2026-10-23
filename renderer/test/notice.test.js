@@ -13,14 +13,14 @@ test('a notice sits above the page with its buttons', () => {
   const calls = [];
   showNotice(d, {
     icon: 'trash',
-    title: 'rate-limiter.md was moved or deleted.',
-    text: "You're seeing the last version DotMD read, at 2:14 PM.",
+    title: 'rate-limiter.md has gone missing.',
+    text: "You're reading the copy from 2:14 PM.",
     buttons: [{ id: 'find', label: 'Find It' }, { id: 'close', label: 'Close', quiet: true }],
   }, (id) => calls.push(id));
   const notice = d.querySelector('.notice');
   assert.equal(notice.nextElementSibling.className, 'paper');
   assert.equal(notice.getAttribute('role'), 'status');
-  assert.equal(notice.querySelector('span').textContent, "rate-limiter.md was moved or deleted. You're seeing the last version DotMD read, at 2:14 PM.");
+  assert.equal(notice.querySelector('span').textContent, "rate-limiter.md has gone missing. You're reading the copy from 2:14 PM.");
   const [find, close] = notice.querySelectorAll('button');
   assert.equal(close.className, 'nb q');
   find.click();
@@ -30,7 +30,7 @@ test('a notice sits above the page with its buttons', () => {
 
 test('a new notice replaces the old one, and none removes it', () => {
   const d = page();
-  showNotice(d, { icon: 'gauge', title: 'Large file, 2.4 MB.', text: 'Showing the first 2,000 lines.', buttons: [] }, () => {});
+  showNotice(d, { icon: 'gauge', title: "This one's big, 2.4 MB.", text: 'DotMD shows the first 2,000 lines so it stays quick.', buttons: [] }, () => {});
   showNotice(d, { icon: 'trash', title: 'Gone.', text: '', buttons: [] }, () => {});
   assert.equal(d.querySelectorAll('.notice').length, 1);
   assert.match(d.querySelector('.notice b').textContent, /Gone/);
@@ -49,7 +49,7 @@ test('the diagram card escapes the error and keeps the source hidden', () => {
 test('the diagram message names the line Mermaid stopped at', () => {
   const source = 'flowchart LR\n  A -->> B';
   const parse = new Error("Parse error on line 2:\nflowchart LR A -->> B\n----------------^\nExpecting 'AMP', got 'TAGEND'");
-  assert.equal(diagramErrorMessage(parse, source), 'Line 2: Mermaid can\'t read "A -->> B".');
-  assert.equal(diagramErrorMessage(new Error('No diagram type detected\nfor text: hello'), 'hello'), 'No diagram type detected');
-  assert.equal(diagramErrorMessage(new Error('Parse error on line 9:'), source), 'Parse error on line 9:');
+  assert.equal(diagramErrorMessage(parse, source), 'Mermaid stopped at line 2: A -->> B');
+  assert.equal(diagramErrorMessage(new Error('No diagram type detected\nfor text: hello'), 'hello'), "Mermaid couldn't make sense of this diagram.");
+  assert.equal(diagramErrorMessage(new Error('Parse error on line 9:'), source), "Mermaid couldn't make sense of this diagram.");
 });

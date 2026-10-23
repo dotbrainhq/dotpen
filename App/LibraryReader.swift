@@ -31,7 +31,11 @@ struct LibraryReader: View {
             } else if let text, let url {
                 ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument, onClose: close, onStepFile: stepFile, takesFocus: takesFocus)
             } else if failed {
-                ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
+                ContentUnavailableView(
+                    "This file won't open",
+                    systemImage: "doc.questionmark",
+                    description: Text("DotMD couldn't read \(document.relativePath). It tries again as soon as the file changes.")
+                )
             } else {
                 Color.clear
             }

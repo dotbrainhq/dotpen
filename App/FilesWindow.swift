@@ -154,7 +154,7 @@ struct FilesWindow: View {
                 if isEveryFolderEmpty {
                     EmptyFoldersView(folders: library.folders)
                 } else {
-                    ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
+                    ContentUnavailableView("Nothing open yet", systemImage: "doc.text", description: Text("Pick a file from the list, or press ⌘K to find one."))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }

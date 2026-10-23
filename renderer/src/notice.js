@@ -43,5 +43,6 @@ export function diagramErrorMessage(error, source) {
   const text = String(error?.message ?? error);
   const line = Number(/on line (\d+)/.exec(text)?.[1]);
   const code = line ? source.split('\n')[line - 1]?.trim() : '';
-  return code ? `Line ${line}: Mermaid can't read "${code}".` : text.split('\n')[0];
+  // Mermaid's own text without a line is parser talk; the card says it plainly and Show Source has the rest.
+  return code ? `Mermaid stopped at line ${line}: ${code}` : "Mermaid couldn't make sense of this diagram.";
 }

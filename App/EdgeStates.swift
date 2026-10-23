@@ -133,13 +133,13 @@ struct AccessLostView: View {
 
     var body: some View {
         EdgeScreen(
-            title: "DotMD can't open \(folder.folder.name)",
-            message: "macOS asks you to choose a folder again after it moves or after some updates. Your comments and read history are kept."
+            title: "\(folder.folder.name) is out of reach",
+            message: "DotMD can no longer see this folder. Show it where \(folder.folder.name) lives now, and your comments and read history pick up right where you left them. Deleted it on purpose? Stop watching it."
         ) {
             LockedTrailMark()
         } footer: {
             HStack(spacing: 8) {
-                Button("Choose Folder…", action: reconnect)
+                Button("Locate Folder…", action: reconnect)
                     .buttonStyle(FormButtonStyle(primary: true))
                     .keyboardShortcut(.defaultAction)
                 Button("Stop Watching") { confirmingRemoval = true }
@@ -150,14 +150,14 @@ struct AccessLostView: View {
             Button("Stop Watching", role: .destructive) { library.removeFolder(folder.id) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("DotMD forgets which files you've read in it. Your files stay as they are.")
+            Text("Your files stay exactly where they are. DotMD forgets its comments and read history for this folder.")
         }
     }
 
     private func reconnect() {
         let path = URL(fileURLWithPath: folder.folder.path)
         guard let url = FolderPicker.chooseFolder(
-            message: "Choose \(folder.folder.name) again so DotMD can read it.",
+            message: "Show DotMD where \(folder.folder.name) lives now.",
             prompt: "Reconnect",
             startingAt: path.deletingLastPathComponent()
         ) else { return }
@@ -170,7 +170,7 @@ struct EmptyFoldersView: View {
     let folders: [FolderState]
 
     var body: some View {
-        EdgeScreen(title: title, message: "When an agent writes a .md file here, it shows up in the list with a green dot.") {
+        EdgeScreen(title: title, message: "The moment an agent writes a .md file here, it lands in the list with a green dot.") {
             DrawnTrailMark()
         } footer: {
             hint
