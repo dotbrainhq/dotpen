@@ -110,4 +110,13 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "composing"]) == nil)
     #expect(ReaderMessage(body: ["type": "toggleFollow"]) == .toggleFollow)
     #expect(ReaderMessage(body: ["type": "showShortcuts"]) == .showShortcuts)
+    #expect(ReaderMessage(body: ["type": "noticeAction", "id": "find"]) == .noticeAction("find"))
+}
+
+@Test func noticeCommandsCarryTheNoticeOrNone() {
+    let notice = PageNotice(icon: "trash", title: "plan.md was moved or deleted.", text: "Last read at 2:14 PM.",
+                            buttons: [PageNotice.Button(id: "close", label: "Close", quiet: true)], dim: true)
+    #expect(ReaderCommand.setNotice(notice).javaScript
+        == #"window.DotMD.setNotice({"buttons":[{"id":"close","label":"Close","quiet":true}],"dim":true,"icon":"trash","text":"Last read at 2:14 PM.","title":"plan.md was moved or deleted."})"#)
+    #expect(ReaderCommand.setNotice(nil).javaScript == "window.DotMD.setNotice(null)")
 }

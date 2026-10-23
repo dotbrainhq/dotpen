@@ -30,6 +30,36 @@ public struct PageComment: Encodable, Equatable, Sendable {
     }
 }
 
+/// The notice above the page: a file that went away (dim shows its last version faded) or a large file shown in part.
+public struct PageNotice: Encodable, Equatable, Sendable {
+    public struct Button: Encodable, Equatable, Sendable {
+        public var id: String
+        public var label: String
+        public var quiet: Bool
+
+        public init(id: String, label: String, quiet: Bool = false) {
+            self.id = id
+            self.label = label
+            self.quiet = quiet
+        }
+    }
+
+    /// "trash" or "gauge", the prototype's icons.
+    public var icon: String
+    public var title: String
+    public var text: String
+    public var buttons: [Button]
+    public var dim: Bool
+
+    public init(icon: String, title: String, text: String, buttons: [Button], dim: Bool = false) {
+        self.icon = icon
+        self.title = title
+        self.text = text
+        self.buttons = buttons
+        self.dim = dim
+    }
+}
+
 /// Who writes the comments: the initial in the avatar and the name on each card.
 public struct CommentAuthor: Encodable, Equatable, Sendable {
     public var initial: String
@@ -67,6 +97,8 @@ public enum ReaderCommand: Sendable {
     case follow(line: Int)
     /// Goes to the next change, as N does. Review Changes in the finished pill uses it.
     case nextChange
+    /// The notice above the page, or none.
+    case setNotice(PageNotice?)
 
     public var javaScript: String {
         switch self {
@@ -96,6 +128,8 @@ public enum ReaderCommand: Sendable {
             return "window.DotMD.follow(\(line))"
         case .nextChange:
             return "window.DotMD.nextChange()"
+        case let .setNotice(notice):
+            return notice.map { "window.DotMD.setNotice(\(Self.json($0)))" } ?? "window.DotMD.setNotice(null)"
         }
     }
 
@@ -167,6 +201,8 @@ public enum ReaderMessage: Equatable, Sendable {
     case toggleFollow
     /// ? on the page: the keyboard shortcuts overlay.
     case showShortcuts
+    /// A button in the notice above the page, by its id.
+    case noticeAction(String)
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -195,6 +231,9 @@ public enum ReaderMessage: Equatable, Sendable {
             self = .resolveComment(id: id)
         case "toggleFollow": self = .toggleFollow
         case "showShortcuts": self = .showShortcuts
+        case "noticeAction":
+            guard let id = dict["id"] as? String else { return nil }
+            self = .noticeAction(id)
         case "composing":
             guard let active = dict["active"] as? Bool else { return nil }
             self = .composing(active)

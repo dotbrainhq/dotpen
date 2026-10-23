@@ -1,4 +1,4 @@
-import { renderDocument, escapeHtml } from './document.js';
+import { renderDocument } from './document.js';
 import { createSanitizer } from './sanitize.js';
 import { rewriteLocalImages } from './assets.js';
 import { buildOutline } from './outline.js';
@@ -9,6 +9,7 @@ import { showMemory, topLine } from './memory.js';
 import { markLive as glow, setWriting as showCaret } from './live.js';
 import { selectionInfo, showSelectionBar, hideSelectionBar } from './selection.js';
 import { renderComments, clearComments, openComposer, layoutCards } from './comments.js';
+import { showNotice, diagramErrorHTML, diagramErrorMessage } from './notice.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -269,6 +270,8 @@ async function renderDiagram(source, theme) {
   window.mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',
+    // DotMD shows its own card in the figure; Mermaid's error graphic would land at the end of the page.
+    suppressErrorRendering: true,
     theme,
     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
   });
@@ -311,10 +314,10 @@ async function renderDiagrams(doc) {
       figure.classList.add('rendered');
       diagramCache.set(source, html);
     } catch (error) {
-      const message = String(error?.message ?? error).split('\n')[0];
+      const message = diagramErrorMessage(error, source);
       figure.style.minHeight = '';
       figure.classList.add('failed');
-      figure.innerHTML = `<div class="diagram-error"><b>This diagram didn't render</b><code>${escapeHtml(message)}</code></div>`;
+      figure.innerHTML = diagramErrorHTML(message, source);
       post({ type: 'diagramError', line: Number(figure.dataset.line ?? 0), message });
     }
   }
@@ -327,6 +330,14 @@ document.addEventListener('error', (event) => {
 darkQuery.addEventListener('change', () => applyPictureTheme(document.getElementById('doc')));
 
 document.addEventListener('click', (event) => {
+  // Show Source on a diagram that didn't render.
+  const toggle = event.target.closest('.dg-err .nb');
+  if (toggle) {
+    const source = toggle.closest('.dg-err').querySelector('.dg-src');
+    source.hidden = !source.hidden;
+    toggle.textContent = source.hidden ? 'Show Source' : 'Hide Source';
+    return;
+  }
   const link = event.target.closest('a[href]');
   if (!link) return;
   event.preventDefault();
@@ -409,6 +420,11 @@ window.DotMD = {
   },
   nextChange() {
     nextChange();
+  },
+  // A file that went away dims its last version under the notice; a large file shows in part under one.
+  setNotice(notice) {
+    root.dataset.edge = notice?.dim ? 'deleted' : '';
+    showNotice(document, notice, (id) => post({ type: 'noticeAction', id }));
   },
   setPanel(open) {
     root.dataset.panel = open ? 'on' : 'off';
