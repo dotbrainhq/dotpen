@@ -46,3 +46,8 @@ import Testing
     """
     #expect(OpenTasks.find(in: text) == ["Shadow mode: log every decision", "Nested step", "Numbered step"])
 }
+
+@Test func openTasksAreFoundInFilesWithWindowsLineEndings() {
+    let text = "# Plan\r\n\r\n- [ ] Load limits\r\n- [x] Log decisions\r\n```\r\n- [ ] example\r\n```\r\n- [ ] Ship it\r\n"
+    #expect(OpenTasks.find(in: text) == ["Load limits", "Ship it"])
+}

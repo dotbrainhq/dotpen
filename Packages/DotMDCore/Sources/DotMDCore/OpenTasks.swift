@@ -5,8 +5,9 @@ public enum OpenTasks {
     public static func find(in text: String) -> [String] {
         var tasks: [String] = []
         var fence: String?
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
+        // By code unit: Swift reads "\r\n" as one character, so splitting on "\n" would miss every CRLF line.
+        for line in text.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
             if let marker = fence {
                 if trimmed.hasPrefix(marker) { fence = nil }
                 continue
