@@ -8,6 +8,9 @@ struct LibraryReader: View {
     let openDocument: (URL) -> ()
     /// Close on the deleted-file notice: the Files window lets go of the file.
     var close: () -> () = {}
+    /// J and K on the page.
+    var stepFile: (Int) -> () = { _ in }
+    var takesFocus = false
     @Environment(\.filesChrome) private var filesChrome
     @State private var text: String?
     @State private var failed = false
@@ -26,7 +29,7 @@ struct LibraryReader: View {
                     AccessLostView(folder: folder)
                 }
             } else if let text, let url {
-                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument, onClose: close)
+                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument, onClose: close, onStepFile: stepFile, takesFocus: takesFocus)
             } else if failed {
                 ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
             } else {

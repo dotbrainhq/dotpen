@@ -11,6 +11,10 @@ struct ReaderScreen: View {
     let onOpenDocument: ((URL) -> ())?
     /// Close on the deleted-file notice. A document window closes itself instead.
     let onClose: (() -> ())?
+    /// J and K: the next or previous file in the Files window's list. A document window has no list.
+    let onStepFile: ((Int) -> ())?
+    /// Reached by J or K: the page takes the keyboard once drawn, so the next J or K works from it too.
+    let takesFocus: Bool
 
     @Environment(Library.self) private var library
     @Environment(AgentBridge.self) private var bridge
@@ -51,13 +55,18 @@ struct ReaderScreen: View {
     @State private var readFromDiskAt = Date.now
     /// Show All on the large-file notice.
     @State private var showAll = false
+    /// Show Source (⌘U): the file as written instead of the page.
+    @State private var showingSource = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil, onClose: (() -> ())? = nil) {
+    init(text: String, fileURL: URL?, onOpenDocument: ((URL) -> ())? = nil, onClose: (() -> ())? = nil,
+         onStepFile: ((Int) -> ())? = nil, takesFocus: Bool = false) {
         self.fileURL = fileURL
         self.onOpenDocument = onOpenDocument
         self.onClose = onClose
+        self.onStepFile = onStepFile
+        self.takesFocus = takesFocus
         _text = State(initialValue: text)
     }
 
@@ -67,7 +76,8 @@ struct ReaderScreen: View {
         chrome
             // Names the window in the Window menu and Mission Control.
             .navigationTitle(displayTitle)
-            .focusedSceneValue(\.documentExporter, exporter)
+            // Export draws the page, so it waits while the source shows.
+            .focusedSceneValue(\.documentExporter, showingSource ? nil : exporter)
             .focusedSceneValue(\.readerCommands, readerCommands)
             .task(id: text) {
                 let current = text
@@ -121,6 +131,9 @@ struct ReaderScreen: View {
             .onChange(of: showAll) {
                 controller.send(.render(markdown: shownMarkdown, options: options))
             }
+            .onChange(of: showingSource) { _, on in
+                controller.send(.setSource(on))
+            }
             .onChange(of: writingAgent) { previous, agent in
                 if let agent {
                     finishedBy = nil
@@ -140,7 +153,7 @@ struct ReaderScreen: View {
                     Cap {
                         commentsButton.buttonStyle(CapButtonStyle())
                         // The prototype's share button is the icon alone; the label stays for VoiceOver.
-                        ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
+                        ShareMenu(exporter: exporter, canExport: !showingSource, fileURL: fileURL, markdown: text)
                             .labelStyle(.iconOnly)
                             .menuStyle(.button)
                             .buttonStyle(CapButtonStyle())
@@ -173,7 +186,7 @@ struct ReaderScreen: View {
                     ToolbarItemGroup(placement: .primaryAction) {
                         readingOptionsButton
                         commentsButton
-                        ShareMenu(exporter: exporter, fileURL: fileURL, markdown: text)
+                        ShareMenu(exporter: exporter, canExport: !showingSource, fileURL: fileURL, markdown: text)
                         sendButton
                     }
                 }
@@ -224,7 +237,9 @@ struct ReaderScreen: View {
             send: send,
             markRead: markRead,
             copyPrompt: copyPrompt,
-            exportPDF: { exporter.export(as: .pdf) }
+            exportPDF: showingSource ? nil : { exporter.export(as: .pdf) },
+            showingSource: showingSource,
+            toggleSource: { showingSource.toggle() }
         )
     }
 
@@ -641,6 +656,46 @@ struct ReaderScreen: View {
         controller.onMessage = handle
         controller.setDocumentLocation(fileURL, root: assetRoot)
         controller.send(.setLayout(layout))
+        controller.send(.setTasksEditable(fileURL.map { FileManager.default.isWritableFile(atPath: $0.path) } ?? false))
+        controller.send(.render(markdown: shownMarkdown, options: options))
+    }
+
+    // MARK: Tasks
+
+    /// A box ticked on the page goes into the file, if the file on disk is still the text on screen. Otherwise the
+    /// page draws again from what DotMD has, so the box shows what the file says.
+    private func tick(line: Int, checked: Bool) async {
+        guard let fileURL else { return }
+        let shown = text
+        let disk = await Task.detached { try? Data(contentsOf: fileURL) }.value.flatMap { String(data: $0, encoding: .utf8) }
+        guard disk == shown, let tick = TaskToggle.toggle(shown, line: line, checked: checked) else {
+            refuseTick()
+            return
+        }
+        let content = Data(tick.text.utf8)
+        let document = libraryDocument
+        if document != nil { library.expectOwnWrite(content) }
+        // Set first, so the file watcher finds nothing new to draw or glow.
+        text = tick.text
+        // In place, not by replacing the file: a file opened on its own gives DotMD no folder to write a new one in.
+        let saved = await Task.detached { (try? content.write(to: fileURL)) != nil }.value
+        guard saved else {
+            text = shown
+            refuseTick()
+            return
+        }
+        guard let document else { return }
+        // The person's own tick isn't a change to review: the copy last read takes it too.
+        if document.readState == .read {
+            library.replaceReadText(document, with: tick.text)
+        } else if let read = library.lastReadText(for: document),
+                  let mirrored = TaskToggle.mirror(read, from: tick.oldLine, to: tick.newLine) {
+            library.replaceReadText(document, with: mirrored)
+        }
+    }
+
+    private func refuseTick() {
+        NSSound.beep()
         controller.send(.render(markdown: shownMarkdown, options: options))
     }
 
@@ -712,6 +767,10 @@ struct ReaderScreen: View {
             if let filesChrome { filesChrome.showOverlay(.shortcuts) } else { overlay = .shortcuts }
         case .toggleFollow:
             toggleFollow()
+        case let .toggleTask(line, checked):
+            Task { await tick(line: line, checked: checked) }
+        case let .stepFile(by):
+            onStepFile?(by)
         case let .noticeAction(id):
             switch id {
             case "showAll": showAll = true
@@ -730,6 +789,10 @@ struct ReaderScreen: View {
             library.markRead(document, text: text)
         case let .scrollLine(line):
             scrolledLine = line
+        case .rendered:
+            if takesFocus, let window = controller.webView.window, window.firstResponder !== controller.webView {
+                window.makeFirstResponder(controller.webView)
+            }
         default:
             break
         }

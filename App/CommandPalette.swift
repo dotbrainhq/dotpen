@@ -15,7 +15,9 @@ struct ReaderCommands {
     var send: (() -> ())?
     var markRead: (() -> ())?
     var copyPrompt: (() -> ())?
-    var exportPDF: () -> ()
+    var exportPDF: (() -> ())?
+    var showingSource = false
+    var toggleSource: (() -> ())?
 }
 
 extension FocusedValues {
@@ -247,7 +249,10 @@ struct CommandPalette: View {
             if let send = reader.send { commands.append(PaletteCommand(title: "Send to agent", shortcut: "⌘↩", action: send)) }
             if let markRead = reader.markRead { commands.append(PaletteCommand(title: "Mark as read", shortcut: "⇧⌘M", action: markRead)) }
             if let copyPrompt = reader.copyPrompt { commands.append(PaletteCommand(title: "Copy as prompt", shortcut: "⇧⌘C", action: copyPrompt)) }
-            commands.append(PaletteCommand(title: "Export as PDF…", shortcut: "⌘E", action: reader.exportPDF))
+            if let exportPDF = reader.exportPDF { commands.append(PaletteCommand(title: "Export as PDF…", shortcut: "⌘E", action: exportPDF)) }
+            if let toggleSource = reader.toggleSource {
+                commands.append(PaletteCommand(title: reader.showingSource ? "Hide source" : "Show source", shortcut: "⌘U", action: toggleSource))
+            }
         }
         commands.append(PaletteCommand(title: "Open a file…", shortcut: "⌘O") { FileActions.openFilePanel() })
         if library.pausedUntil == nil {
@@ -339,6 +344,8 @@ struct ShortcutsOverlay: View {
 
     private let columns: [(title: String, rows: [(String, [String])])] = [
         ("Move around", [
+            ("Next file", ["J"]),
+            ("Previous file", ["K"]),
             ("Next change", ["N"]),
             ("Previous change", ["⇧", "N"]),
             ("Open anything", ["⌘", "K"]),
@@ -347,6 +354,7 @@ struct ShortcutsOverlay: View {
             ("Comment", ["C"]),
             ("Send to agent", ["⌘", "↩"]),
             ("Mark as read", ["⇧", "⌘", "M"]),
+            ("Tick task", ["Space"]),
             ("Copy as prompt", ["⇧", "⌘", "C"]),
         ]),
         ("View", [
@@ -354,6 +362,7 @@ struct ShortcutsOverlay: View {
             ("Bigger text", ["⌘", "+"]),
             ("Smaller text", ["⌘", "−"]),
             ("Follow agent", ["F"]),
+            ("Show source", ["⌘", "U"]),
         ]),
     ]
 
@@ -451,6 +460,10 @@ struct PaletteCommands: Commands {
             Button("Smaller Text") { step(-1) }
                 .keyboardShortcut("-")
                 .disabled(options.size == ReadingOptions.Size.allCases.first)
+            Divider()
+            Button(reader?.showingSource == true ? "Hide Source" : "Show Source") { reader?.toggleSource?() }
+                .keyboardShortcut("u")
+                .disabled(reader?.toggleSource == nil)
             Divider()
         }
         CommandMenu("Go") {

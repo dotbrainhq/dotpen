@@ -16,6 +16,10 @@ struct FilesWindow: View {
     @AppStorage("fileSort") private var sort = FileSortOrder.lastChanged
     @AppStorage("showTitles") private var showTitles = false
     @State private var filter = FileFilter()
+    /// Folders closed in the list, kept here so J and K skip the files inside them.
+    @State private var collapsed: Set<String> = []
+    /// The file J or K last moved to. Its reader takes the keyboard, so J and K keep working.
+    @State private var stepped: Int64?
     /// The Send sheet, over the whole window with the scrim behind it.
     @State private var sheet: AnyView?
     /// The palette or the shortcuts, over the whole window.
@@ -104,7 +108,7 @@ struct FilesWindow: View {
                 .contentShape(Rectangle())
                 .gesture(WindowDragGesture())
             ListHeader(sort: $sort, showTitles: $showTitles)
-            FileList(selection: $selection, sort: sort, showTitles: showTitles, filter: filter)
+            FileList(selection: $selection, collapsed: $collapsed, sort: sort, showTitles: showTitles, filter: filter)
                 .frame(maxHeight: .infinity)
             FilterBar(filter: $filter, addFolder: addFolder)
         }
@@ -118,6 +122,17 @@ struct FilesWindow: View {
         .padding(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 0))
     }
 
+    /// J and K: the next or previous file as the list shows it. At either end nothing moves.
+    private func stepFile(_ offset: Int) {
+        let rows = Outline.rows(for: library.folders, sort: sort, filter: filter, showTitles: showTitles, collapsed: collapsed)
+        guard let next = Outline.file(after: selection, by: offset, in: rows) else {
+            NSSound.beep()
+            return
+        }
+        stepped = next
+        selection = next
+    }
+
     private var selectedDocument: DotMDCore.Document? {
         guard let selection else { return nil }
         return library.folders.lazy.flatMap(\.documents).first { $0.key == selection }
@@ -125,7 +140,8 @@ struct FilesWindow: View {
 
     @ViewBuilder private var detail: some View {
         if let document = selectedDocument ?? (lastDocument?.key == selection ? lastDocument : nil) {
-            LibraryReader(document: document, openDocument: openDocument) { selection = nil }
+            LibraryReader(document: document, openDocument: openDocument, close: { selection = nil }, stepFile: stepFile,
+                          takesFocus: stepped == document.key)
                 .id(document.key)
                 .onChange(of: selectedDocument, initial: true) { _, current in
                     if let current { lastDocument = current }
