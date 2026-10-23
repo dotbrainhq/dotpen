@@ -58,6 +58,15 @@ public final class ReaderController: NSObject {
         return true
     }
 
+    /// Copy for Slack or Google Docs: the page as paste-ready HTML. Diagrams are drawn to images for Docs first,
+    /// so the renderer's call is awaited.
+    public func copyHTML(for target: CopyTarget) async throws -> String {
+        let value = try await webView.callAsyncJavaScript(
+            "return await window.DotMD.copyFor(target)", arguments: ["target": target.rawValue], contentWorld: .page
+        )
+        return value as? String ?? ""
+    }
+
     public func exportBodyHTML() async throws -> String {
         let value = try await webView.evaluateJavaScript("window.DotMD.exportHTML()")
         return value as? String ?? ""
@@ -103,4 +112,10 @@ private final class WeakScriptHandler: NSObject, WKScriptMessageHandler {
             target?.receive(message.body)
         }
     }
+}
+
+/// Where a copy is headed: Slack's composer has no headings or tables; Google Docs keeps both.
+public enum CopyTarget: String, Sendable {
+    case slack
+    case docs
 }

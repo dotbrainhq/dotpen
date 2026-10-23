@@ -12,6 +12,7 @@ import { renderComments, clearComments, openComposer, layoutCards } from './comm
 import { showNotice, diagramErrorHTML, diagramErrorMessage } from './notice.js';
 import { prepareTasks, taskLine } from './tasks.js';
 import { sourceHTML, sourceTopLine, blockForLine } from './source.js';
+import { copyHTML } from './copy.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -111,6 +112,29 @@ document.addEventListener('change', (event) => {
   const line = taskLine(event.target);
   if (line) post({ type: 'toggleTask', line, checked: event.target.checked });
 });
+
+// A drawn diagram as a PNG for Google Docs, from its light version at twice its size. Throws if WebKit won't let
+// the canvas be read, and the caller falls back to the diagram's source.
+async function diagramPNG(svg) {
+  const box = svg.viewBox.baseVal;
+  const width = box?.width || svg.getBoundingClientRect().width;
+  const height = box?.height || svg.getBoundingClientRect().height;
+  const copy = svg.cloneNode(true);
+  copy.setAttribute('width', width);
+  copy.setAttribute('height', height);
+  const image = new Image();
+  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(copy))}`;
+  await image.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(width * 2);
+  canvas.height = Math.ceil(height * 2);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.scale(2, 2);
+  context.drawImage(image, 0, 0, width, height);
+  return canvas.toDataURL('image/png');
+}
 
 // The file as written, numbered by line. The page's marks, comments and outline wait until it's shown again.
 function renderSource(doc, markdown) {
@@ -317,6 +341,7 @@ function placeDiagrams(doc, oldHeights) {
     const html = diagramCache.get(source);
     if (html) {
       figure.innerHTML = html;
+      figure.dataset.source = source;
       figure.classList.add('rendered');
       used.set(source, html);
     } else if (oldHeights[index]) {
@@ -337,6 +362,7 @@ async function renderDiagrams(doc) {
       const dark = await renderDiagram(source, 'dark');
       const html = `<div class="diagram-light">${light}</div><div class="diagram-dark">${dark}</div>`;
       figure.innerHTML = html;
+      figure.dataset.source = source;
       figure.style.minHeight = '';
       figure.classList.add('rendered');
       diagramCache.set(source, html);
@@ -344,6 +370,7 @@ async function renderDiagrams(doc) {
       const message = diagramErrorMessage(error, source);
       figure.style.minHeight = '';
       figure.classList.add('failed');
+      figure.dataset.source = source;
       figure.innerHTML = diagramErrorHTML(message, source);
       post({ type: 'diagramError', line: Number(figure.dataset.line ?? 0), message });
     }
@@ -486,6 +513,23 @@ window.DotMD = {
   setReadingOptions(options) {
     applyOptions(options);
     applyPictureTheme(document.getElementById('doc'));
+  },
+  // Copy for Slack or Google Docs: the page as paste-ready HTML.
+  async copyFor(target) {
+    const doc = document.getElementById('doc');
+    const diagramImages = new Map();
+    if (target === 'docs') {
+      for (const figure of doc.querySelectorAll('figure.mermaid-block.rendered')) {
+        const svg = figure.querySelector('.diagram-light svg');
+        if (!svg) continue;
+        try {
+          diagramImages.set(figure, await diagramPNG(svg));
+        } catch {
+          // The diagram pastes as its source instead.
+        }
+      }
+    }
+    return copyHTML(doc, target, { diagramImages });
   },
   exportHTML() {
     const clone = document.getElementById('doc').cloneNode(true);
