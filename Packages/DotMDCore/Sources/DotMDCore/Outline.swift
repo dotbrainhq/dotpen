@@ -89,6 +89,17 @@ public enum Outline {
 
     /// The row offset steps away from focus, stopping at either end. With nothing focused, Down picks the first
     /// row and Up the last.
+    /// J and K: the file shown after or before the open one, skipping folders and files inside closed ones. Nil at
+    /// either end. With no open file, the first or last file.
+    public static func file(after key: Int64?, by offset: Int, in rows: [OutlineRow]) -> Int64? {
+        let files = rows.compactMap { row -> Int64? in
+            if case let .file(document) = row.content { document.key } else { nil }
+        }
+        guard let key, let index = files.firstIndex(of: key) else { return offset >= 0 ? files.first : files.last }
+        let next = index + offset
+        return files.indices.contains(next) ? files[next] : nil
+    }
+
     public static func move(from focus: OutlineRowID?, by offset: Int, in rows: [OutlineRow]) -> OutlineRowID? {
         guard !rows.isEmpty else { return nil }
         guard let focus, let index = rows.firstIndex(where: { $0.id == focus }) else {

@@ -515,3 +515,32 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     library.pauseWatching(for: .milliseconds(200))
     #expect(try await eventually { library.pausedUntil == nil })
 }
+
+@MainActor @Test func aTickDotMDWroteIsNotAnAgentWriting() async throws {
+    let temp = try TempFolder()
+    try temp.write("plan.md", "- [ ] Ship it\n")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    let id = try #require(library.folders.first?.id)
+    let ticked = "- [x] Ship it\n"
+    library.expectOwnWrite(Data(ticked.utf8))
+    let file = try temp.write("plan.md", ticked)
+    await library.handle([file.path], in: id)
+    let document = try #require(library.folders.first?.documents.first)
+    #expect(!library.writing.contains(document.key))
+}
+
+@MainActor @Test func replacingTheReadTextKeepsWhenItWasRead() async throws {
+    let temp = try TempFolder()
+    try temp.write("plan.md", "- [ ] Ship it\n")
+    let library = try makeLibrary()
+    try await library.addFolder(temp.url)
+    var document = try #require(library.folders.first?.documents.first)
+    library.markRead(document, text: "- [ ] Ship it\n")
+    document = try #require(library.folders.first?.documents.first)
+    let readAt = try #require(document.lastReadAt)
+    library.replaceReadText(document, with: "- [x] Ship it\n")
+    document = try #require(library.folders.first?.documents.first)
+    #expect(library.lastReadText(for: document) == "- [x] Ship it\n")
+    #expect(document.lastReadAt == readAt)
+}

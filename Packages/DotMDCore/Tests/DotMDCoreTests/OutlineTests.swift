@@ -89,3 +89,16 @@ private let gateway = folder(1, "api-gateway", documents: [
     #expect(HiddenPathsSummary.text(for: [folder(1, "a", ignored: [".git"])], showIgnored: false) == nil)
     #expect(HiddenPathsSummary.text(for: [folder(1, "a")], showIgnored: true) == "Showing hidden paths")
 }
+
+@Test func nextFileSkipsFoldersAndHiddenFilesAndStopsAtTheEnds() {
+    let rows = Outline.rows(for: [gateway], sort: .name, filter: FileFilter(), showTitles: false, collapsed: [])
+    #expect(Outline.file(after: 11, by: 1, in: rows) == 12)
+    #expect(Outline.file(after: 12, by: 1, in: rows) == 10)
+    #expect(Outline.file(after: 12, by: -1, in: rows) == 11)
+    #expect(Outline.file(after: 10, by: 1, in: rows) == nil)
+    #expect(Outline.file(after: 11, by: -1, in: rows) == nil)
+    #expect(Outline.file(after: nil, by: 1, in: rows) == 11)
+    #expect(Outline.file(after: nil, by: -1, in: rows) == 10)
+    let collapsed = Outline.rows(for: [gateway], sort: .name, filter: FileFilter(), showTitles: false, collapsed: ["1/docs/specs"])
+    #expect(Outline.file(after: 11, by: 1, in: collapsed) == 10)
+}

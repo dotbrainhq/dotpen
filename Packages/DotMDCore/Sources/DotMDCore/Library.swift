@@ -66,6 +66,8 @@ public final class Library {
     @ObservationIgnored private let database: LibraryDatabase
     @ObservationIgnored private var watchers: [Int64: FolderWatcher] = [:]
     @ObservationIgnored private var writingTimers: [Int64: Task<(), Never>] = [:]
+    /// Content hashes of writes DotMD made itself, a ticked task: the change they bring isn't an agent writing.
+    @ObservationIgnored private var ownWrites: Set<String> = []
     @ObservationIgnored private var started = false
     /// The URL each folder's security-scoped access was started on. Paths use the canonical root instead.
     @ObservationIgnored private var accessURLs: [Int64: URL] = [:]
@@ -192,6 +194,17 @@ public final class Library {
     /// Marks a document read at the text the reader showed, so the snapshot is exactly what the person saw.
     public func markRead(_ document: Document, text: String) {
         if let updated = try? database.markRead(documentID: document.key, content: Data(text.utf8)) { put(updated) }
+    }
+
+    /// Swaps the text kept as last read, keeping when it was read: a task ticked in DotMD isn't a change to review.
+    public func replaceReadText(_ document: Document, with text: String) {
+        let readAt = lastReadDate(for: document) ?? .now
+        if let updated = try? database.markRead(documentID: document.key, content: Data(text.utf8), at: readAt) { put(updated) }
+    }
+
+    /// DotMD is about to write this content to a watched file itself.
+    public func expectOwnWrite(_ content: Data) {
+        ownWrites.insert(Snapshots.hash(content))
     }
 
     /// The text the person last read, when DotMD kept it.
@@ -560,7 +573,9 @@ public final class Library {
             let shownByToggle = usualRules?.containsIgnoredPath(relativePath) ?? false
             if let stored = try? database.upsert(file, folderID: id, readIfNew: shownByToggle) {
                 put(stored)
-                if before?.contentHash != stored.contentHash { markWriting(stored.key) }
+                if before?.contentHash != stored.contentHash, ownWrites.remove(stored.contentHash) == nil {
+                    markWriting(stored.key)
+                }
             }
         }
         return false
