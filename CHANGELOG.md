@@ -38,3 +38,7 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - Large files open at their first 2,000 lines, with Show All for the rest.
 - A diagram that doesn't render says which line Mermaid stopped at and shows its source.
 - Screens for a folder DotMD can no longer open and for folders with no Markdown yet.
+- Tick task boxes with a click, or Tab to one and press Space. The tick is written to the file and doesn't count as a change.
+- J and K open the next and previous file in the list.
+- Show Source (⌘U) shows the file as written, with line numbers.
+- Increase Contrast strengthens faint text and lines, Reduce Motion stills the remaining motion, and VoiceOver can name the share menu and the filter field.
