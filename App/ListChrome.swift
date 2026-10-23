@@ -93,6 +93,7 @@ private struct FilterField: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(Palette.ink)
+                .accessibilityLabel("Filter files")
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: 26, maxHeight: 26)
