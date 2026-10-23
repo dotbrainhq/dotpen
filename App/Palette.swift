@@ -43,6 +43,8 @@ enum Palette {
     /// Agent badges, as in the status line: Claude Code warm, Codex graphite. Never green.
     static let agentClaude = Color("AgentClaude")
     static let agentCodex = Color("AgentCodex")
+    /// The prototype's amber, for a folder DotMD can't open.
+    static let warn = Color("Warn")
 }
 
 /// One of the prototype's 16 point line icons, drawn at the given size and tinted by the foreground style.

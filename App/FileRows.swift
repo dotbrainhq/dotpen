@@ -53,8 +53,8 @@ struct FolderRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Twisty(isExpanded: isExpanded)
-            Icon(folder.accessLost ? "lock" : "folder", size: 16)
-                .foregroundStyle(folder.accessLost ? Palette.ink4 : folder.folder.color.color)
+            Icon("folder", size: 16)
+                .foregroundStyle(folder.folder.color.color)
             Text(folder.folder.name)
                 .font(.system(size: 12.5, weight: .semibold))
                 .lineLimit(1)
@@ -85,6 +85,10 @@ struct FolderRow: View {
                     .background(Palette.fill2, in: Capsule())
                     .fixedSize()
                     .transition(.opacity)
+            }
+            if folder.accessLost {
+                Icon("warn", size: 14)
+                    .foregroundStyle(Palette.warn)
             }
         }
         .foregroundStyle(Palette.ink)
