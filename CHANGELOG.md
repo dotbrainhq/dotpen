@@ -34,3 +34,7 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - Watched files in Spotlight by title, headings and text.
 - Shortcuts actions: Open File, Get Changes Since Last Read, List Open Tasks and Send Comments to Agent.
 - Open in DotMD in Finder's Services menu, and a `dotmd` command that opens files and watches folders.
+- A file that's moved or deleted while open stays on screen, faded, with Find It to locate it again.
+- Large files open at their first 2,000 lines, with Show All for the rest.
+- A diagram that doesn't render says which line Mermaid stopped at and shows its source.
+- Screens for a folder DotMD can no longer open and for folders with no Markdown yet.
