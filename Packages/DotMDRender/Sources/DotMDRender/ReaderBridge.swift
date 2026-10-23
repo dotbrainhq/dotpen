@@ -99,6 +99,10 @@ public enum ReaderCommand: Sendable {
     case nextChange
     /// The notice above the page, or none.
     case setNotice(PageNotice?)
+    /// Task boxes tick, for a file DotMD may write to. Off by default, as in Quick Look.
+    case setTasksEditable(Bool)
+    /// Show Source: the file as written instead of the page.
+    case setSource(Bool)
 
     public var javaScript: String {
         switch self {
@@ -130,6 +134,10 @@ public enum ReaderCommand: Sendable {
             return "window.DotMD.nextChange()"
         case let .setNotice(notice):
             return notice.map { "window.DotMD.setNotice(\(Self.json($0)))" } ?? "window.DotMD.setNotice(null)"
+        case let .setTasksEditable(editable):
+            return "window.DotMD.setTasksEditable(\(editable))"
+        case let .setSource(on):
+            return "window.DotMD.setSource(\(on))"
         }
     }
 
@@ -203,6 +211,10 @@ public enum ReaderMessage: Equatable, Sendable {
     case showShortcuts
     /// A button in the notice above the page, by its id.
     case noticeAction(String)
+    /// A task box clicked or ticked with Space, by its item's source line.
+    case toggleTask(line: Int, checked: Bool)
+    /// J or K on the page: the next or previous file in the list.
+    case stepFile(Int)
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -234,6 +246,12 @@ public enum ReaderMessage: Equatable, Sendable {
         case "noticeAction":
             guard let id = dict["id"] as? String else { return nil }
             self = .noticeAction(id)
+        case "toggleTask":
+            guard let line = (dict["line"] as? NSNumber)?.intValue, let checked = dict["checked"] as? Bool else { return nil }
+            self = .toggleTask(line: line, checked: checked)
+        case "stepFile":
+            guard let by = (dict["by"] as? NSNumber)?.intValue else { return nil }
+            self = .stepFile(by)
         case "composing":
             guard let active = dict["active"] as? Bool else { return nil }
             self = .composing(active)

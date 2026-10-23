@@ -10,6 +10,8 @@ import { markLive as glow, setWriting as showCaret } from './live.js';
 import { selectionInfo, showSelectionBar, hideSelectionBar } from './selection.js';
 import { renderComments, clearComments, openComposer, layoutCards } from './comments.js';
 import { showNotice, diagramErrorHTML, diagramErrorMessage } from './notice.js';
+import { prepareTasks, taskLine } from './tasks.js';
+import { sourceHTML, sourceTopLine, blockForLine } from './source.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -26,6 +28,12 @@ let writing = { writing: false, lastLine: null };
 // The file's comments and who writes them, put back after every render. Null outside the watched folders.
 let comments = null;
 let lastSentLine = null;
+// Task boxes tick in the app; Quick Look never turns this on.
+let tasksEditable = false;
+// Show Source: the file as written instead of the page.
+let showingSource = false;
+// The last render, so Show Source and back can draw again without Swift.
+let lastRender = null;
 let scrollTimer = null;
 
 // The line at the top of the view, sent once scrolling pauses, so Swift can remember where reading stopped.
@@ -92,8 +100,27 @@ document.addEventListener('keydown', (event) => {
   } else if (event.key === 'f' || event.key === 'F') {
     // Following only means something while an agent writes the file; Swift ignores it otherwise.
     post({ type: 'toggleFollow' });
+  } else if (event.key === 'j' || event.key === 'k') {
+    // Next and previous file in the list; Swift ignores them in a document window.
+    post({ type: 'stepFile', by: event.key === 'j' ? 1 : -1 });
   }
 });
+
+// A click or Space on a task box. Swift writes the tick to the file, or draws the page again if it can't.
+document.addEventListener('change', (event) => {
+  const line = taskLine(event.target);
+  if (line) post({ type: 'toggleTask', line, checked: event.target.checked });
+});
+
+// The file as written, numbered by line. The page's marks, comments and outline wait until it's shown again.
+function renderSource(doc, markdown) {
+  doc.innerHTML = sourceHTML(markdown);
+  map.setChanges([]);
+  clearComments(doc, margin());
+  buildOutline(doc, margin(), { reduceMotion: reduceMotion() });
+  hideSelectionBar(doc);
+  selected = null;
+}
 
 const margin = () => document.getElementById('margin');
 
@@ -346,7 +373,7 @@ document.addEventListener('click', (event) => {
     const fragment = href.slice(1);
     let id = fragment;
     try { id = decodeURIComponent(fragment); } catch { /* malformed escape: use the raw fragment */ }
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth' });
     return;
   }
   post({ type: 'linkActivated', href });
@@ -354,9 +381,17 @@ document.addEventListener('click', (event) => {
 
 window.DotMD = {
   async render({ markdown, options }) {
+    lastRender = { markdown, options };
     applyOptions(options);
     const doc = document.getElementById('doc');
     const y = window.scrollY;
+    root.dataset.view = showingSource ? 'source' : 'page';
+    if (showingSource) {
+      renderSource(doc, markdown);
+      window.scrollTo(0, y);
+      post({ type: 'rendered' });
+      return;
+    }
     const oldHeights = [...doc.querySelectorAll('figure.mermaid-block')].map((figure) => figure.offsetHeight);
     doc.innerHTML = renderDocument(markdown, sanitize);
     rewriteLocalImages(doc);
@@ -367,6 +402,7 @@ window.DotMD = {
     }
     placeDiagrams(doc, oldHeights);
     addCopyButtons(doc);
+    prepareTasks(doc, tasksEditable);
     decorate(doc);
     buildOutline(doc, margin(), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
     CSS.highlights?.delete('compose');
@@ -426,6 +462,20 @@ window.DotMD = {
     root.dataset.edge = notice?.dim ? 'deleted' : '';
     showNotice(document, notice, (id) => post({ type: 'noticeAction', id }));
   },
+  setTasksEditable(editable) {
+    tasksEditable = editable;
+    if (!showingSource) prepareTasks(document.getElementById('doc'), editable);
+  },
+  // Show Source and back keep the line at the top of the view.
+  async setSource(on) {
+    if (on === showingSource || !lastRender) return;
+    const doc = document.getElementById('doc');
+    const line = showingSource ? sourceTopLine(doc) : topLine(doc);
+    showingSource = on;
+    await this.render(lastRender);
+    const block = line && (on ? doc.querySelector(`.sl[data-line="${line}"]`) : blockForLine(doc, line));
+    if (block) window.scrollTo(0, block.getBoundingClientRect().top + window.scrollY - 24);
+  },
   setPanel(open) {
     root.dataset.panel = open ? 'on' : 'off';
     layoutCards(document.getElementById('doc'), margin());
@@ -442,6 +492,7 @@ window.DotMD = {
     removeMarks(clone);
     clone.querySelectorAll('[data-dotmd-ui], button.copy').forEach((el) => el.remove());
     clone.querySelectorAll('.anch').forEach((el) => el.replaceWith(...el.childNodes));
+    prepareTasks(clone, false);
     return clone.innerHTML;
   },
 };

@@ -120,3 +120,12 @@ private struct SampleChanges: Encodable, Sendable {
         == #"window.DotMD.setNotice({"buttons":[{"id":"close","label":"Close","quiet":true}],"dim":true,"icon":"trash","text":"Last read at 2:14 PM.","title":"plan.md was moved or deleted."})"#)
     #expect(ReaderCommand.setNotice(nil).javaScript == "window.DotMD.setNotice(null)")
 }
+
+@Test func taskSourceAndFileMessagesTravelBothWays() {
+    #expect(ReaderCommand.setTasksEditable(true).javaScript == "window.DotMD.setTasksEditable(true)")
+    #expect(ReaderCommand.setSource(false).javaScript == "window.DotMD.setSource(false)")
+    #expect(ReaderMessage(body: ["type": "toggleTask", "line": 12, "checked": true]) == .toggleTask(line: 12, checked: true))
+    #expect(ReaderMessage(body: ["type": "toggleTask", "line": 12]) == nil)
+    #expect(ReaderMessage(body: ["type": "stepFile", "by": -1]) == .stepFile(-1))
+    #expect(ReaderMessage(body: ["type": "stepFile"]) == nil)
+}
