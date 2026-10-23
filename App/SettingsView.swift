@@ -257,17 +257,21 @@ private struct WatchedFolderRow: View {
     var body: some View {
         SettingsRow(title: folder.folder.name, detail: detail) {
             if folder.accessLost {
-                Button("Reconnect…", action: reconnect)
-                    .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                HStack(spacing: 10) {
+                    Icon("warn", size: 14)
+                        .foregroundStyle(Palette.warn)
+                    Button("Reconnect…", action: reconnect)
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                }
             } else {
                 Button("Remove", action: remove)
                     .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
                     .accessibilityLabel("Stop watching \(folder.folder.name)")
             }
         } leading: {
-            // The same mark as the folder's row in the list.
-            Icon(folder.accessLost ? "lock" : "folder", size: 16)
-                .foregroundStyle(folder.accessLost ? Palette.ink4 : folder.folder.color.color)
+            // The same marks as the folder's row in the list: its own color, and the amber warning when lost.
+            Icon("folder", size: 16)
+                .foregroundStyle(folder.folder.color.color)
         }
     }
 
