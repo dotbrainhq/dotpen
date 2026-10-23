@@ -269,6 +269,9 @@ html::-webkit-scrollbar { display: none; }
 .mermaid-block pre.mermaid { visibility: hidden; height: 40px; margin: 0; }
 .mermaid-block svg { max-width: 100%; height: auto; }
 .mermaid-block .diagram-dark { display: none; }
+/* Mermaid's dark theme sets edge labels on gray boxes. The diagram's own background keeps the line stopping at the label. */
+.mermaid-block .edgeLabel, .mermaid-block .edgeLabel p, .mermaid-block .labelBkg { background-color: var(--diagram) !important; }
+.mermaid-block .edgeLabel rect { fill: var(--diagram) !important; }
 :root[data-paper="night"] .mermaid-block .diagram-light { display: none; }
 :root[data-paper="night"] .mermaid-block .diagram-dark { display: block; }
 @media (prefers-color-scheme: dark) {
