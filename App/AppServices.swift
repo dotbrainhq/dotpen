@@ -9,6 +9,7 @@ enum AppServices {
     static let activity = AgentActivity(library: library)
     static let spotlight = SpotlightIndex(library: library)
     static let navigator = FilesNavigator()
+    static let reviews = ReviewQueue(library: library)
 
     /// Loads the library and starts what depends on it. Every window, and every Shortcuts action, calls this;
     /// each part starts once.

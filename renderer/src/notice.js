@@ -4,6 +4,7 @@ const ICONS = {
   trash: '<path d="M3 4.5h10M6.25 4.5V3h3.5v1.5M4.5 4.5l.6 8.5a1 1 0 0 0 1 .95h3.8a1 1 0 0 0 1-.95l.6-8.5"/>',
   gauge: '<path d="M2.5 11a5.5 5.5 0 1 1 11 0"/><path d="m8 11 2.5-3.5"/>',
   warn: '<path d="M8 2.5 14.25 13.5H1.75z"/><path d="M8 6.5v3.25M8 11.75v.01"/>',
+  review: '<path d="M3 3.5h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H7.5L4.5 14v-2.5H3a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1z"/>',
 };
 
 const icon = (name) => `<svg class="i" viewBox="0 0 16 16" aria-hidden="true">${ICONS[name] ?? ''}</svg>`;

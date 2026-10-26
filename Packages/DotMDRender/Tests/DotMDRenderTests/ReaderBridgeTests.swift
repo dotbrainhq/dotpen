@@ -129,3 +129,9 @@ private struct SampleChanges: Encodable, Sendable {
     #expect(ReaderMessage(body: ["type": "stepFile", "by": -1]) == .stepFile(-1))
     #expect(ReaderMessage(body: ["type": "stepFile"]) == nil)
 }
+
+@Test func acceptingAChangeNamesItsKindAndLine() {
+    #expect(ReaderMessage(body: ["type": "acceptChange", "kind": "changed", "line": 14]) == .acceptChange(kind: "changed", line: 14))
+    #expect(ReaderMessage(body: ["type": "acceptChange", "kind": "removed", "line": 0]) == .acceptChange(kind: "removed", line: 0))
+    #expect(ReaderMessage(body: ["type": "acceptChange", "line": 14]) == nil)
+}

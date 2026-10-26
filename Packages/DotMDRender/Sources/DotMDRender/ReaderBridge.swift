@@ -215,6 +215,8 @@ public enum ReaderMessage: Equatable, Sendable {
     case toggleTask(line: Int, checked: Bool)
     /// J or K on the page: the next or previous file in the list.
     case stepFile(Int)
+    /// Accept in the review bar: one change taken in as read, named by its kind and line (a removal's afterLine).
+    case acceptChange(kind: String, line: Int)
 
     public init?(body: Any) {
         guard let dict = body as? [String: Any], let type = dict["type"] as? String else { return nil }
@@ -249,6 +251,9 @@ public enum ReaderMessage: Equatable, Sendable {
         case "toggleTask":
             guard let line = (dict["line"] as? NSNumber)?.intValue, let checked = dict["checked"] as? Bool else { return nil }
             self = .toggleTask(line: line, checked: checked)
+        case "acceptChange":
+            guard let kind = dict["kind"] as? String, let line = (dict["line"] as? NSNumber)?.intValue else { return nil }
+            self = .acceptChange(kind: kind, line: line)
         case "stepFile":
             guard let by = (dict["by"] as? NSNumber)?.intValue else { return nil }
             self = .stepFile(by)

@@ -144,6 +144,8 @@ struct FileRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isWriting: Bool { library.writing.contains(document.key) }
+    /// An agent asked for the person's review of this file and is waiting.
+    private var awaitsReview: Bool { AppServices.reviews.pending(for: document.key) != nil }
 
     var body: some View {
         // The row frame goes on first so dragging and the menu work across the whole row, padding included.
@@ -186,7 +188,8 @@ struct FileRow: View {
         .accessibilityValue(accessibilityValue)
     }
 
-    /// The pencil while the file is being written wins over the unread dot.
+    /// The pencil while the file is being written wins, then an amber dot while an agent waits for review, then the
+    /// unread dot.
     @ViewBuilder private var badge: some View {
         if isWriting {
             Icon("pencil", size: 13)
@@ -194,6 +197,12 @@ struct FileRow: View {
                 .symbolEffect(.wiggle, options: .repeating.speed(0.5), isActive: !reduceMotion)
                 .frame(width: 16, height: 16)
                 .transition(.opacity)
+        } else if awaitsReview {
+            Circle()
+                .fill(Palette.warn)
+                .frame(width: 7, height: 7)
+                .help("An agent is waiting for your review")
+                .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
         } else if document.readState != .read {
             Circle()
                 .fill(Palette.accent)
@@ -202,13 +211,14 @@ struct FileRow: View {
         }
     }
 
-    /// Drives the badge animation: 0 read, 1 unread, 2 being written.
+    /// Drives the badge animation: 0 read, 1 unread, 2 being written, 3 waiting for review.
     private var badgeState: Int {
-        isWriting ? 2 : document.readState == .read ? 0 : 1
+        isWriting ? 2 : awaitsReview ? 3 : document.readState == .read ? 0 : 1
     }
 
     private var accessibilityValue: String {
         if isWriting { return "Being written" }
+        if awaitsReview { return "Waiting for your review" }
         switch document.readState {
         case .read: return ""
         case .new: return "New"

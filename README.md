@@ -28,7 +28,7 @@ Turn on the agent bridge in Settings > Integrations. Each agent has a row there 
 | Gemini CLI | `gemini mcp add --scope user --transport http dotmd http://127.0.0.1:47319/mcp` |
 | Grok CLI | `grok mcp add --transport http dotmd http://127.0.0.1:47319/mcp` |
 
-Your agent can then list your open comments, read the ones on a file, and resolve them when it's done. Any other agent that speaks MCP over HTTP connects to `http://127.0.0.1:47319/mcp`. The bridge listens on your Mac only.
+Your agent can then list your open comments, read the ones on a file, and resolve them when it's done. It can also ask for your review of a file and wait: DotMD marks the file and shows the request on the page, and when you press Done Reviewing, the agent gets your comments. Any other agent that speaks MCP over HTTP connects to `http://127.0.0.1:47319/mcp`. The bridge listens on your Mac only.
 
 ## Command line
 

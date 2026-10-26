@@ -13,6 +13,7 @@ import { showNotice, diagramErrorHTML, diagramErrorMessage } from './notice.js';
 import { prepareTasks, taskLine } from './tasks.js';
 import { sourceHTML, sourceTopLine, blockForLine } from './source.js';
 import { copyHTML } from './copy.js';
+import { changeLines, changeAt, showChangeBar, hideChangeBar } from './review.js';
 
 const root = document.documentElement;
 const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
@@ -53,15 +54,6 @@ function changeCount(changes) {
   return (changes.added?.length ?? 0) + (changes.changed?.length ?? 0) + (changes.removed?.length ?? 0);
 }
 
-function changeLines(changes) {
-  const lines = [
-    ...(changes.added ?? []).map((c) => c.start),
-    ...(changes.changed ?? []).map((c) => c.start),
-    ...(changes.removed ?? []).map((r) => Math.max(r.afterLine, 1)),
-  ];
-  return [...new Set(lines)].sort((a, b) => a - b);
-}
-
 // A revealed block sits 24 points under the top, so Next looks below that for the one after it.
 function nextChange(backwards = false) {
   if (!marks) return;
@@ -71,7 +63,56 @@ function nextChange(backwards = false) {
     return block ? block.getBoundingClientRect().top + window.scrollY : Infinity;
   };
   const line = (backwards ? previousChangeLine : nextChangeLine)(changeLines(marks.changes), window.scrollY + 28, topOf);
-  if (line) revealBlock(doc, line, { reduceMotion: reduceMotion() });
+  if (line) {
+    revealBlock(doc, line, { reduceMotion: reduceMotion() });
+    setCurrent(line);
+  }
+}
+
+// The change being reviewed: the one Next landed on or the one clicked. The review bar acts on it.
+let current = null;
+// After an Accept, the line to move on from once Swift sends the new marks.
+let advanceFrom = null;
+
+function setCurrent(line) {
+  current = marks ? changeAt(marks.changes, line) : null;
+  if (!current) {
+    hideChangeBar(document);
+    return;
+  }
+  showChangeBar(document, current, {
+    canSendBack: canComment(),
+    onAccept: acceptCurrent,
+    onSendBack: sendBackCurrent,
+    onNext: () => nextChange(),
+  });
+}
+
+function clearCurrent() {
+  current = null;
+  hideChangeBar(document);
+}
+
+// Takes the change into what DotMD counts as read. The file stays as the agent wrote it.
+function acceptCurrent() {
+  if (!current) return;
+  advanceFrom = Math.max(current.at, 1);
+  post({ type: 'acceptChange', kind: current.kind, line: current.at });
+  clearCurrent();
+}
+
+// Sends the change back: the composer opens on the block, quoting its text as it reads now.
+function sendBackCurrent() {
+  if (!current || current.kind === 'removed') return;
+  const block = blockAt(document.getElementById('doc'), current.at);
+  if (!block) return;
+  const copy = block.cloneNode(true);
+  copy.querySelectorAll('.del, .del-gap, .gut, [data-dotmd-ui]').forEach((el) => el.remove());
+  const text = copy.textContent.replace(/\s+/g, ' ').trim();
+  const range = document.createRange();
+  range.selectNodeContents(block);
+  clearCurrent();
+  compose({ info: { line: Number(block.dataset.line), text }, range });
 }
 
 // DotMD's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
@@ -101,6 +142,11 @@ document.addEventListener('keydown', (event) => {
   } else if (event.key === 'f' || event.key === 'F') {
     // Following only means something while an agent writes the file; Swift ignores it otherwise.
     post({ type: 'toggleFollow' });
+  } else if ((event.key === 'a' || event.key === 'A') && current) {
+    event.preventDefault();
+    acceptCurrent();
+  } else if (event.key === 'Escape' && current) {
+    clearCurrent();
   } else if (event.key === 'j' || event.key === 'k') {
     // Next and previous file in the list; Swift ignores them in a document window.
     post({ type: 'stepFile', by: event.key === 'j' ? 1 : -1 });
@@ -384,6 +430,11 @@ document.addEventListener('error', (event) => {
 darkQuery.addEventListener('change', () => applyPictureTheme(document.getElementById('doc')));
 
 document.addEventListener('click', (event) => {
+  // A click on a marked block makes it the change under review.
+  if (marks && !event.target.closest('a, button, [data-dotmd-ui]:not(.gut)')) {
+    const block = event.target.closest('#doc [data-line]');
+    if (block && changeAt(marks.changes, Number(block.dataset.line))) setCurrent(Number(block.dataset.line));
+  }
   // Show Source on a diagram that didn't render.
   const toggle = event.target.closest('.dg-err .nb');
   if (toggle) {
@@ -442,11 +493,25 @@ window.DotMD = {
   },
   applyMarks({ changes, since }) {
     marks = { changes, since };
-    decorate(document.getElementById('doc'));
+    const doc = document.getElementById('doc');
+    decorate(doc);
+    if (advanceFrom !== null) {
+      const lines = changeLines(changes);
+      const next = lines.find((line) => line >= advanceFrom) ?? lines[0];
+      advanceFrom = null;
+      if (next) {
+        revealBlock(doc, next, { reduceMotion: reduceMotion() });
+        setCurrent(next);
+      }
+    } else if (current) {
+      setCurrent(Math.max(current.at, 1));
+    }
   },
   clearMarks(fade) {
     const doc = document.getElementById('doc');
     marks = null;
+    advanceFrom = null;
+    clearCurrent();
     map.setChanges([]);
     const chip = doc.querySelector('.chip');
     if (!fade) {

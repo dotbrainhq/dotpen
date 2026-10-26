@@ -42,4 +42,6 @@ Every release of DotMD is listed here. Versions follow semantic versioning.
 - J and K open the next and previous file in the list.
 - A watched folder that moves is followed to its new place right away. One deleted or moved to the Trash asks to be chosen again.
 - Show Source (⌘U) shows the file as written, with line numbers.
+- Review changes one at a time: N moves through them, A accepts one, and Send back turns it into a comment for the agent. Accepting never edits the file.
+- Agents can ask for your review and wait. The file gets an amber dot, the page shows the request, the Dock shows how many files are waiting, and Done Reviewing hands your comments to the agent.
 - Increase Contrast strengthens faint text and lines, Reduce Motion stills the remaining motion, and VoiceOver can name the share menu and the filter field.

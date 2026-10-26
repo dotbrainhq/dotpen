@@ -299,6 +299,13 @@ html::-webkit-scrollbar { display: none; }
 .notice svg.i { width: 16px; height: 16px; fill: none; stroke: var(--ink-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .nb { font: 500 12px var(--font-ui); border: 0; cursor: pointer; padding: 4px 9px; border-radius: 6px; background: var(--raise); box-shadow: 0 1px 1px rgba(3, 26, 27, 0.06), 0 1px 3px rgba(3, 26, 27, 0.06); color: var(--ink); white-space: nowrap; }
 .nb.q { background: none; box-shadow: none; color: var(--ink-3); }
+
+/* The review bar, after Next or a click on a change: Accept, Send back, Next. In the prototype's pill language. */
+.chgbar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 6px 0 14px; border-radius: 999px; background: var(--pop); box-shadow: var(--shadow-2); font: 500 12.5px var(--font-ui); color: var(--ink-2); white-space: nowrap; }
+.chgbar .n { margin-right: 8px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.chgbar .nb { font-size: 12.5px; }
+.chgbar .nb:not(.q) { background: var(--accent); color: var(--on-accent); box-shadow: none; }
+.chgbar kbd { font: 600 10.5px var(--font-ui); opacity: .7; }
 :root[data-edge="deleted"] .paper { opacity: .55; filter: saturate(.3); }
 
 .footnotes { font-size: 0.85em; color: var(--ink-2); }
@@ -329,7 +336,7 @@ html::-webkit-scrollbar { display: none; }
   .anch { background: none; border: 0; } .num, .selpop, .notice { display: none; }
   :root[data-edge] .paper { opacity: 1; filter: none; }
   .copy { display: none; }
-  .chip { display: none; }
+  .chip, .chgbar { display: none; }
   .map { display: none; }
   .memory { display: none; }
   .caret { display: none; }

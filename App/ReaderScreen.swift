@@ -272,6 +272,14 @@ struct ReaderScreen: View {
                 dim: true
             )
         }
+        if let documentKey, let review = AppServices.reviews.pending(for: documentKey) {
+            return PageNotice(
+                icon: "review",
+                title: "\(review.agent ?? "Your agent") asked for your review.",
+                text: review.note.map { "\u{201C}\($0)\u{201D}" } ?? "Comment on anything you'd change. It waits until you're done.",
+                buttons: [PageNotice.Button(id: "reviewDone", label: "Done Reviewing")]
+            )
+        }
         if isLarge, !showAll {
             let size = ByteCountFormatter.string(fromByteCount: Int64(text.utf8.count), countStyle: .file)
             return PageNotice(
@@ -694,6 +702,19 @@ struct ReaderScreen: View {
         }
     }
 
+    /// Accept in the review bar: the change goes into the copy DotMD counts as read, so it stops showing. The file
+    /// stays as the agent wrote it. The page then moves on to the next change.
+    private func acceptChange(kind: String, line: Int) {
+        guard let document = libraryDocument, let kind = ChangeKind(rawValue: kind),
+              let read = library.lastReadText(for: document),
+              let accepted = ChangeDiff.accepting(kind, at: line, from: read, to: text) else {
+            NSSound.beep()
+            return
+        }
+        library.replaceReadText(document, with: accepted)
+        Task { await refreshMarks() }
+    }
+
     private func refuseTick() {
         NSSound.beep()
         controller.send(.render(markdown: shownMarkdown, options: options))
@@ -771,9 +792,12 @@ struct ReaderScreen: View {
             Task { await tick(line: line, checked: checked) }
         case let .stepFile(by):
             onStepFile?(by)
+        case let .acceptChange(kind, line):
+            acceptChange(kind: kind, line: line)
         case let .noticeAction(id):
             switch id {
             case "showAll": showAll = true
+            case "reviewDone": if let documentKey { AppServices.reviews.finish(documentKey: documentKey) }
             case "find": findMovedFile()
             case "close": if let onClose { onClose() } else { dismiss() }
             default: break
