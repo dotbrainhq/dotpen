@@ -1,7 +1,8 @@
 import Foundation
 
 /// The bridge's MCP methods, apart from HTTP: initialize, ping, tools/list and tools/call for list_comments,
-/// get_comments and resolve_comment. Requests and responses are JSON-RPC objects.
+/// get_comments and resolve_comment, plus request_review and wait_for_review when the app offers reviews. Requests and
+/// responses are JSON-RPC objects.
 public struct MCPTools: Sendable {
     public static let serverName = "dotmd"
     public static let latestProtocol = "2025-06-18"
@@ -10,16 +11,28 @@ public struct MCPTools: Sendable {
     the ones on that file, or list_comments for all of them. Each comment quotes the passage it is about and \
     gives its lines. Make the change it asks for, then call resolve_comment with its id.
     """
+    static let reviewInstructions = """
+     When you finish a Markdown file the person should check before you go on, call request_review with its path, \
+    then call wait_for_review until it reports the review done, and work through the comments it returns.
+    """
+    /// The longest one wait_for_review call waits: agents put their own time limits on tool calls.
+    static let longestWait = 50
 
     let source: any CommentSource
+    let reviews: (any ReviewSource)?
+    /// How often wait_for_review checks on the review.
+    let reviewPollInterval: Duration
     let version: String
     /// DotMD's icon as PNG, sent inside the reply so the agent's app fetches nothing to show it.
     let icon: Data?
     /// Called with the agent's name, like "Claude Code", each time one connects.
     let connected: @Sendable (String) -> ()
 
-    public init(source: any CommentSource, version: String, icon: Data? = nil, connected: @escaping @Sendable (String) -> () = { _ in }) {
+    public init(source: any CommentSource, reviews: (any ReviewSource)? = nil, version: String, icon: Data? = nil,
+                connected: @escaping @Sendable (String) -> () = { _ in }, reviewPollInterval: Duration = .seconds(1)) {
         self.source = source
+        self.reviews = reviews
+        self.reviewPollInterval = reviewPollInterval
         self.version = version
         self.icon = icon
         self.connected = connected
@@ -52,12 +65,12 @@ public struct MCPTools: Sendable {
                 "protocolVersion": params["protocolVersion"] as? String ?? Self.latestProtocol,
                 "capabilities": ["tools": [String: Any]()],
                 "serverInfo": serverInfo,
-                "instructions": Self.instructions,
+                "instructions": Self.instructions + (reviews == nil ? "" : Self.reviewInstructions),
             ])
         case "ping":
             return Self.result(id: id, [:])
         case "tools/list":
-            return Self.result(id: id, ["tools": Self.toolList])
+            return Self.result(id: id, ["tools": Self.toolList + (reviews == nil ? [] : Self.reviewTools)])
         case "tools/call":
             return await call(id: id, params: params)
         default:
@@ -107,6 +120,35 @@ public struct MCPTools: Sendable {
         ]
     }
 
+    static var reviewTools: [[String: Any]] {
+        [
+            [
+                "name": "request_review",
+                "description": "Asks the person to review a Markdown file in DotMD before you go on. DotMD shows the request; call wait_for_review with the id it returns.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [
+                        "path": ["type": "string", "description": "The Markdown file's path, relative to the repository or absolute."],
+                        "note": ["type": "string", "description": "Optional: what you'd like the person to look at."],
+                    ],
+                    "required": ["path"],
+                ],
+            ],
+            [
+                "name": "wait_for_review",
+                "description": "Waits for a review you asked for, up to \(longestWait) seconds per call. Returns the person's comments once they mark it done; call again while they're still reviewing.",
+                "inputSchema": [
+                    "type": "object",
+                    "properties": [
+                        "id": ["type": "integer", "description": "The id request_review returned."],
+                        "seconds": ["type": "integer", "description": "How long to wait, up to \(longestWait). Default \(longestWait)."],
+                    ],
+                    "required": ["id"],
+                ],
+            ],
+        ]
+    }
+
     private func call(id: Any, params: [String: Any]) async -> [String: Any] {
         let arguments = params["arguments"] as? [String: Any] ?? [:]
         switch params["name"] as? String {
@@ -123,8 +165,43 @@ public struct MCPTools: Sendable {
             }
             let resolved = await source.resolve(id: number.int64Value)
             return Self.toolResult(id: id, resolved ? "Resolved comment \(number)." : "No open comment \(number).", isError: !resolved)
+        case "request_review" where reviews != nil:
+            guard let path = arguments["path"] as? String, !path.isEmpty else {
+                return Self.toolResult(id: id, "Pass the file's path.", isError: true)
+            }
+            let note = (arguments["note"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            guard let review = await reviews?.requestReview(path: path, note: note) else {
+                return Self.toolResult(id: id, "\(path) isn't in a folder DotMD watches, so DotMD can't show it for review.", isError: true)
+            }
+            return Self.toolResult(id: id, "Review \(review) requested for \(path). DotMD is showing it to the person. Call wait_for_review with id \(review) to wait for their comments.")
+        case "wait_for_review" where reviews != nil:
+            guard let number = arguments["id"] as? NSNumber else {
+                return Self.toolResult(id: id, "Pass the review's id.", isError: true)
+            }
+            let seconds = min(max((arguments["seconds"] as? NSNumber)?.intValue ?? Self.longestWait, 0), Self.longestWait)
+            return await waitForReview(id: id, review: number.int64Value, seconds: seconds)
         case let name:
             return Self.error(id: id, code: -32602, message: "Unknown tool: \(name ?? "none")")
+        }
+    }
+
+    private func waitForReview(id: Any, review: Int64, seconds: Int) async -> [String: Any] {
+        let deadline = ContinuousClock.now + .seconds(seconds)
+        while true {
+            switch await reviews?.reviewStatus(id: review) ?? .unknown {
+            case .unknown:
+                return Self.toolResult(id: id, "No review \(review). DotMD may have quit since it was requested; call request_review again.", isError: true)
+            case let .done(comments) where comments.isEmpty:
+                return Self.toolResult(id: id, "Review \(review) is done, with no comments: the person read it and has nothing to change.")
+            case let .done(comments):
+                let count = comments.count == 1 ? "1 comment" : "\(comments.count) comments"
+                return Self.toolResult(id: id, "Review \(review) is done. The person left \(count):\n\n\(Self.describe(comments))\n\nMake each change, then call resolve_comment with its id.")
+            case .pending:
+                if ContinuousClock.now >= deadline {
+                    return Self.toolResult(id: id, "The person is still reviewing. Call wait_for_review with id \(review) again.")
+                }
+                try? await Task.sleep(for: reviewPollInterval)
+            }
         }
     }
 

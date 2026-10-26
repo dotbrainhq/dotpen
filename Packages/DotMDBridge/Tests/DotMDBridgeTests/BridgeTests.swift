@@ -20,6 +20,24 @@ actor FakeSource: CommentSource {
     }
 }
 
+/// Review requests held in memory: path → id, and a status per id.
+actor FakeReviews: ReviewSource {
+    var requested: [(path: String, note: String?)] = []
+    var statuses: [Int64: ReviewStatus] = [:]
+
+    func requestReview(path: String, note: String?) -> Int64? {
+        guard path.hasSuffix("rate-limiter.md") else { return nil }
+        requested.append((path, note))
+        let id = Int64(requested.count)
+        statuses[id] = .pending
+        return id
+    }
+
+    func reviewStatus(id: Int64) -> ReviewStatus { statuses[id] ?? .unknown }
+
+    func finish(_ id: Int64, comments: [BridgeComment]) { statuses[id] = .done(comments) }
+}
+
 actor Names {
     var all: [String] = []
     func add(_ name: String) { all.append(name) }
@@ -172,5 +190,61 @@ private func call(_ tools: MCPTools, _ name: String, _ arguments: [String: Any] 
         #expect(try await post(port, "", method: "GET").0 == 405)
         #expect(try await post(port, "{", headers: [:]).0 == 400)
         #expect(try await post(port, #"{"jsonrpc":"2.0","id":3,"method":"ping"}"#, headers: ["Origin": "https://evil.example"]).0 == 403)
+    }
+}
+
+@Suite struct ReviewToolsTests {
+    let reviews = FakeReviews()
+    var tools: MCPTools { MCPTools(source: FakeSource(), reviews: reviews, version: "0.1.0", reviewPollInterval: .milliseconds(10)) }
+
+    @Test func reviewToolsAreListedOnlyWhenTheAppOffersThem() async throws {
+        let names = { (tools: MCPTools) async throws -> [String] in
+            let response = try #require(await tools.respond(to: ["jsonrpc": "2.0", "id": 1, "method": "tools/list"]))
+            return ((response["result"] as? [String: Any])?["tools"] as? [[String: Any]] ?? []).compactMap { $0["name"] as? String }
+        }
+        #expect(try await names(tools) == ["list_comments", "get_comments", "resolve_comment", "request_review", "wait_for_review"])
+        #expect(try await names(MCPTools(source: FakeSource(), version: "0.1.0")) == ["list_comments", "get_comments", "resolve_comment"])
+    }
+
+    @Test func requestingAReviewHandsBackItsId() async {
+        let reply = await call(tools, "request_review", ["path": "docs/plans/rate-limiter.md", "note": "Check the rollout steps."])
+        #expect(!reply.isError)
+        #expect(reply.text.contains("Review 1"))
+        #expect(reply.text.contains("wait_for_review"))
+        #expect(await reviews.requested.first?.note == "Check the rollout steps.")
+        let missing = await call(tools, "request_review", [:])
+        #expect(missing.isError)
+        let outside = await call(tools, "request_review", ["path": "notes/elsewhere.md"])
+        #expect(outside.isError)
+        #expect(outside.text.contains("watches"))
+    }
+
+    @Test func waitingReportsAReviewStillOpen() async {
+        _ = await call(tools, "request_review", ["path": "docs/plans/rate-limiter.md"])
+        let reply = await call(tools, "wait_for_review", ["id": 1, "seconds": 0])
+        #expect(!reply.isError)
+        #expect(reply.text.contains("still reviewing"))
+    }
+
+    @Test func waitingReturnsTheCommentsOnceTheReviewIsDone() async {
+        _ = await call(tools, "request_review", ["path": "docs/plans/rate-limiter.md"])
+        let comment = BridgeComment(id: 9, path: "/Users/me/code/api-gateway/docs/plans/rate-limiter.md", relativePath: "docs/plans/rate-limiter.md",
+                                    lineStart: 14, lineEnd: 14, quote: "Shadow mode", body: "Log for a week first.")
+        Task {
+            try? await Task.sleep(for: .milliseconds(40))
+            await reviews.finish(1, comments: [comment])
+        }
+        let reply = await call(tools, "wait_for_review", ["id": 1, "seconds": 5])
+        #expect(reply.text.contains("Review 1 is done"))
+        #expect(reply.text.contains("Comment 9"))
+        #expect(reply.text.contains("Log for a week first."))
+        await reviews.finish(1, comments: [])
+        let approved = await call(tools, "wait_for_review", ["id": 1])
+        #expect(approved.text.contains("no comments"))
+    }
+
+    @Test func waitingOnAnUnknownReviewIsAnError() async {
+        let reply = await call(tools, "wait_for_review", ["id": 42])
+        #expect(reply.isError)
     }
 }

@@ -30,3 +30,20 @@ public protocol CommentSource: Sendable {
     /// Marks a comment resolved. False when there is no open comment with that id.
     func resolve(id: Int64) async -> Bool
 }
+
+/// Where a review an agent asked for stands.
+public enum ReviewStatus: Equatable, Sendable {
+    /// The person hasn't finished yet.
+    case pending
+    /// The person marked it done; these are the open comments they left on the file.
+    case done([BridgeComment])
+    /// No such review, for example because DotMD quit since it was asked for.
+    case unknown
+}
+
+/// Where the bridge asks the person to review a file and learns when they're done. The app backs it with its queue.
+public protocol ReviewSource: Sendable {
+    /// Asks for a review of the file at path, with the agent's note. Nil when the file isn't in a watched folder.
+    func requestReview(path: String, note: String?) async -> Int64?
+    func reviewStatus(id: Int64) async -> ReviewStatus
+}

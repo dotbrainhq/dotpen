@@ -98,3 +98,46 @@ func diffsAMegabyteFileInUnderAHundredMilliseconds() {
     #expect(changes.changed.count == 1)
     #expect(elapsed < .milliseconds(100), "Diff took \(elapsed)")
 }
+
+private let readText = "# Plan\n\nShip it behind a flag.\n\nRoll out to internal keys.\n\nLog every decision.\n"
+private let agentText = "# Plan\n\nShip it behind a flag for a week.\n\nAlert on every 429.\n\nRoll out to internal keys.\n"
+
+@Test func acceptingAChangedBlockLeavesTheOthersMarked() throws {
+    let before = ChangeDiff.changes(from: readText, to: agentText)
+    #expect(before.changed.map(\.start) == [3])
+    #expect(before.added.map(\.start) == [5])
+    #expect(before.removed.count == 1)
+    let read = try #require(ChangeDiff.accepting(.changed, at: 3, from: readText, to: agentText))
+    let after = ChangeDiff.changes(from: read, to: agentText)
+    #expect(after.changed.isEmpty)
+    #expect(after.added == before.added)
+    #expect(after.removed.map(\.text) == before.removed.map(\.text))
+}
+
+@Test func acceptingAnAddedBlockOrARemovalTakesOnlyThatOne() throws {
+    let added = try #require(ChangeDiff.accepting(.added, at: 5, from: readText, to: agentText))
+    let afterAdded = ChangeDiff.changes(from: added, to: agentText)
+    #expect(afterAdded.added.isEmpty)
+    #expect(afterAdded.changed.map(\.start) == [3])
+    #expect(afterAdded.removed.count == 1)
+    let line = try #require(ChangeDiff.changes(from: readText, to: agentText).removed.first).afterLine
+    let removed = try #require(ChangeDiff.accepting(.removed, at: line, from: readText, to: agentText))
+    let afterRemoved = ChangeDiff.changes(from: removed, to: agentText)
+    #expect(afterRemoved.removed.isEmpty)
+    #expect(afterRemoved.count == 2)
+}
+
+@Test func acceptingEveryChangeOneByOneLeavesNothing() throws {
+    var read = readText
+    while let line = ChangeDiff.changes(from: read, to: agentText).lines.first {
+        let set = ChangeDiff.changes(from: read, to: agentText)
+        let kind: ChangeKind = set.changed.contains { $0.start == line } ? .changed : set.added.contains { $0.start == line } ? .added : .removed
+        let at = kind == .removed ? try #require(set.removed.first { max($0.afterLine, 1) == line }).afterLine : line
+        read = try #require(ChangeDiff.accepting(kind, at: at, from: read, to: agentText))
+    }
+    #expect(ChangeDiff.changes(from: read, to: agentText).isEmpty)
+}
+
+@Test func acceptingALineWithNoChangeReturnsNothing() {
+    #expect(ChangeDiff.accepting(.changed, at: 1, from: readText, to: agentText) == nil)
+}
