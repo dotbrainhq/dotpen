@@ -42,7 +42,7 @@ public enum FolderScanner {
     }
 
     /// True only when nothing is at path. Unlike fileExists(atPath:), a path that can't be checked, such as one
-    /// inside a folder DotMD can't read, doesn't count as gone.
+    /// inside a folder dotPen can't read, doesn't count as gone.
     static func isGone(_ path: String) -> Bool {
         var info = stat()
         guard lstat(path, &info) != 0 else { return false }

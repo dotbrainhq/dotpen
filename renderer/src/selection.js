@@ -2,7 +2,7 @@ const BUBBLE = '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M
 
 /**
  * The passage a selection covers, whitespace collapsed, and the source line of the block it starts in.
- * Null for an empty selection, one outside the text, or one in DotMD's own controls.
+ * Null for an empty selection, one outside the text, or one in dotPen's own controls.
  */
 export function selectionInfo(doc, selection) {
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;

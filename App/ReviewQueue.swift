@@ -4,7 +4,7 @@ import DotMDCore
 import Observation
 
 /// Reviews agents ask for over the bridge: which files wait on the person, and the comments they leave when they're
-/// done. Kept in memory: an agent whose DotMD quit hears there's no such review and asks again.
+/// done. Kept in memory: an agent whose dotPen quit hears there's no such review and asks again.
 @MainActor
 @Observable
 final class ReviewQueue {

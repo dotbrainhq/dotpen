@@ -11,7 +11,7 @@ final class FilesNavigator {
     var requested: Int64?
 }
 
-/// The prototype's menu bar menu: who is writing now, new and changed files, then Open DotMD, Pause watching and
+/// The prototype's menu bar menu: who is writing now, new and changed files, then Open dotPen, Pause watching and
 /// Settings. A native menu, as the prototype draws one.
 struct MenuBarMenu: View {
     @Environment(Library.self) private var library
@@ -45,7 +45,7 @@ struct MenuBarMenu: View {
             }
         }
         Divider()
-        Button("Open DotMD") { openFiles() }
+        Button("Open dotPen") { openFiles() }
             .keyboardShortcut("o")
         if let until = library.pausedUntil {
             Button("Resume watching (paused until \(until.formatted(date: .omitted, time: .shortened)))") {

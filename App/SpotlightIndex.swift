@@ -4,14 +4,14 @@ import Foundation
 import Observation
 import UniformTypeIdentifiers
 
-/// Puts watched files in Spotlight by title, headings and text, so a search there opens them in DotMD. On by
-/// default, as in the prototype's Integrations pane; the switch there removes everything DotMD added.
+/// Puts watched files in Spotlight by title, headings and text, so a search there opens them in dotPen. On by
+/// default, as in the prototype's Integrations pane; the switch there removes everything dotPen added.
 @MainActor
 @Observable
 final class SpotlightIndex {
     private(set) var isEnabled: Bool
     private let library: Library
-    private let index = CSSearchableIndex(name: "DotMD")
+    private let index = CSSearchableIndex(name: "dotPen")
     /// What Spotlight has, by file path: the content hash it was indexed at.
     private var indexed: [String: String] = [:]
     private var pending: Task<(), Never>?
@@ -68,7 +68,7 @@ final class SpotlightIndex {
             changed.map { entry in (try? Data(contentsOf: entry.url)).map { String(decoding: $0.prefix(Self.textLimit), as: UTF8.self) } }
         }.value
         guard !Task.isCancelled, isEnabled else { return }
-        // The first pass after launch starts clean, so files removed while DotMD was closed leave Spotlight too.
+        // The first pass after launch starts clean, so files removed while dotPen was closed leave Spotlight too.
         if indexed.isEmpty { try? await index.deleteAllSearchableItems() }
         let items = zip(changed, texts).compactMap { entry, text in
             text.map { Self.item(for: entry.document, url: entry.url, folder: entry.folder, text: $0) }

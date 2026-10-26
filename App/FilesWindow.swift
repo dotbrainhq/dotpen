@@ -158,7 +158,7 @@ struct FilesWindow: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("DotMD")
+            .navigationTitle("dotPen")
         }
     }
 
@@ -195,7 +195,7 @@ struct FilesWindow: View {
     }
 
     private func addFolder() {
-        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
+        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. dotPen lists every Markdown file inside it.") else { return }
         FileActions.watch(url, in: library)
     }
 }

@@ -48,16 +48,16 @@ final class AgentBridge {
     /// `--scope user` like Claude Code; Codex and Grok CLI write to the person's config by default.
     var connections: [Connection] {
         [
-            Connection(agent: "Claude Code", detail: "Adds DotMD for every project. Run the copied command in Terminal.",
-                       button: "Copy Command", text: "claude mcp add --transport http --scope user dotmd \(address)"),
-            Connection(agent: "Codex", detail: "Adds DotMD to ~/.codex/config.toml. Run the copied command in Terminal.",
-                       button: "Copy Command", text: "codex mcp add dotmd --url \(address)"),
-            Connection(agent: "Gemini CLI", detail: "Adds DotMD for every project. Run the copied command in Terminal.",
-                       button: "Copy Command", text: "gemini mcp add --scope user --transport http dotmd \(address)"),
-            Connection(agent: "Grok CLI", detail: "Adds DotMD to Grok CLI. Run the copied command in Terminal.",
-                       button: "Copy Command", text: "grok mcp add --transport http dotmd \(address)"),
+            Connection(agent: "Claude Code", detail: "Adds dotPen for every project. Run the copied command in Terminal.",
+                       button: "Copy Command", text: "claude mcp add --transport http --scope user dotpen \(address)"),
+            Connection(agent: "Codex", detail: "Adds dotPen to ~/.codex/config.toml. Run the copied command in Terminal.",
+                       button: "Copy Command", text: "codex mcp add dotpen --url \(address)"),
+            Connection(agent: "Gemini CLI", detail: "Adds dotPen for every project. Run the copied command in Terminal.",
+                       button: "Copy Command", text: "gemini mcp add --scope user --transport http dotpen \(address)"),
+            Connection(agent: "Grok CLI", detail: "Adds dotPen to Grok CLI. Run the copied command in Terminal.",
+                       button: "Copy Command", text: "grok mcp add --transport http dotpen \(address)"),
             Connection(agent: "Cursor", detail: "Add the copied entry to ~/.cursor/mcp.json.",
-                       button: "Copy JSON", text: "{\n  \"mcpServers\": {\n    \"dotmd\": { \"url\": \"\(address)\" }\n  }\n}"),
+                       button: "Copy JSON", text: "{\n  \"mcpServers\": {\n    \"dotpen\": { \"url\": \"\(address)\" }\n  }\n}"),
             Connection(agent: "Other agents", detail: "Any agent that speaks MCP over HTTP connects to \(address).",
                        button: "Copy Address", text: address),
         ]
@@ -91,7 +91,7 @@ final class AgentBridge {
             } catch {
                 guard self.server === server else { return }
                 self.server = nil
-                state = .failed("DotMD couldn't listen on port \(BridgeServer.defaultPort). Another app may be using it.")
+                state = .failed("dotPen couldn't listen on port \(BridgeServer.defaultPort). Another app may be using it.")
             }
         }
     }

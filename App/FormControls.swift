@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The prototype's `.btn`: 30 points tall on a soft fill, or DotMD's green for the main action.
+/// The prototype's `.btn`: 30 points tall on a soft fill, or dotPen's green for the main action.
 struct FormButtonStyle: ButtonStyle {
     var primary = false
     /// The prototype shrinks the button inline in places: 26 points in Settings rows, 24 for Done.

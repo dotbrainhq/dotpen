@@ -113,7 +113,7 @@ struct SidebarButtonStyle: ButtonStyle {
     }
 }
 
-/// A filter toggle: like the add button, and drawn in DotMD's green on the selection wash while on.
+/// A filter toggle: like the add button, and drawn in dotPen's green on the selection wash while on.
 struct FilterToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button {

@@ -4,10 +4,10 @@ import Foundation
 /// get_comments and resolve_comment, plus request_review and wait_for_review when the app offers reviews. Requests and
 /// responses are JSON-RPC objects.
 public struct MCPTools: Sendable {
-    public static let serverName = "dotmd"
+    public static let serverName = "dotpen"
     public static let latestProtocol = "2025-06-18"
     static let instructions = """
-    DotMD holds review comments a person wrote on Markdown files. Call get_comments with a file's path to read \
+    dotPen holds review comments a person wrote on Markdown files. Call get_comments with a file's path to read \
     the ones on that file, or list_comments for all of them. Each comment quotes the passage it is about and \
     gives its lines. Make the change it asks for, then call resolve_comment with its id.
     """
@@ -23,7 +23,7 @@ public struct MCPTools: Sendable {
     /// How often wait_for_review checks on the review.
     let reviewPollInterval: Duration
     let version: String
-    /// DotMD's icon as PNG, sent inside the reply so the agent's app fetches nothing to show it.
+    /// dotPen's icon as PNG, sent inside the reply so the agent's app fetches nothing to show it.
     let icon: Data?
     /// Called with the agent's name, like "Claude Code", each time one connects.
     let connected: @Sendable (String) -> ()
@@ -82,9 +82,9 @@ public struct MCPTools: Sendable {
     private var serverInfo: [String: Any] {
         var info: [String: Any] = [
             "name": Self.serverName,
-            "title": "DotMD",
+            "title": "dotPen",
             "version": version,
-            "description": "Review comments you wrote on Markdown files in DotMD, for your agent to read and resolve.",
+            "description": "Review comments you wrote on Markdown files in dotPen, for your agent to read and resolve.",
         ]
         if let icon {
             info["icons"] = [["src": "data:image/png;base64," + icon.base64EncodedString(), "mimeType": "image/png", "sizes": ["128x128"]]]
@@ -96,7 +96,7 @@ public struct MCPTools: Sendable {
         [
             [
                 "name": "list_comments",
-                "description": "Every open review comment in DotMD's watched folders, with its file, lines, quoted passage and text.",
+                "description": "Every open review comment in dotPen's watched folders, with its file, lines, quoted passage and text.",
                 "inputSchema": ["type": "object", "properties": [String: Any]()],
             ],
             [
@@ -124,7 +124,7 @@ public struct MCPTools: Sendable {
         [
             [
                 "name": "request_review",
-                "description": "Asks the person to review a Markdown file in DotMD before you go on. DotMD shows the request; call wait_for_review with the id it returns.",
+                "description": "Asks the person to review a Markdown file in dotPen before you go on. dotPen shows the request; call wait_for_review with the id it returns.",
                 "inputSchema": [
                     "type": "object",
                     "properties": [
@@ -171,9 +171,9 @@ public struct MCPTools: Sendable {
             }
             let note = (arguments["note"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             guard let review = await reviews?.requestReview(path: path, note: note) else {
-                return Self.toolResult(id: id, "\(path) isn't in a folder DotMD watches, so DotMD can't show it for review.", isError: true)
+                return Self.toolResult(id: id, "\(path) isn't in a folder dotPen watches, so dotPen can't show it for review.", isError: true)
             }
-            return Self.toolResult(id: id, "Review \(review) requested for \(path). DotMD is showing it to the person. Call wait_for_review with id \(review) to wait for their comments.")
+            return Self.toolResult(id: id, "Review \(review) requested for \(path). dotPen is showing it to the person. Call wait_for_review with id \(review) to wait for their comments.")
         case "wait_for_review" where reviews != nil:
             guard let number = arguments["id"] as? NSNumber else {
                 return Self.toolResult(id: id, "Pass the review's id.", isError: true)
@@ -190,7 +190,7 @@ public struct MCPTools: Sendable {
         while true {
             switch await reviews?.reviewStatus(id: review) ?? .unknown {
             case .unknown:
-                return Self.toolResult(id: id, "No review \(review). DotMD may have quit since it was requested; call request_review again.", isError: true)
+                return Self.toolResult(id: id, "No review \(review). dotPen may have quit since it was requested; call request_review again.", isError: true)
             case let .done(comments) where comments.isEmpty:
                 return Self.toolResult(id: id, "Review \(review) is done, with no comments: the person read it and has nothing to change.")
             case let .done(comments):

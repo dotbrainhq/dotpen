@@ -1,6 +1,6 @@
 # Acknowledgments
 
-DotMD stands on the work of the people who wrote and maintain these 76 open-source projects. Each one is listed with its license.
+dotPen stands on the work of the people who wrote and maintain these 76 open-source projects. Each one is listed with its license.
 
 ## @braintree/sanitize-url 7.1.2
 

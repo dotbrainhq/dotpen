@@ -152,7 +152,7 @@ private func makeLibrary() throws -> Library {
     let first = Library(database: database)
     try await first.addFolder(temp.url)
     first.removeFolderWatchersForTesting()
-    try temp.write("README.md", "# Repo, edited while DotMD was closed")
+    try temp.write("README.md", "# Repo, edited while dotPen was closed")
     let second = Library(database: database)
     await second.start()
     #expect(second.folders.first?.documents.first?.readState == .changed)
@@ -349,7 +349,7 @@ private func readStates(_ library: Library) -> [String: ReadState] {
     #expect(library.folders.map(\.status) == [.ready, .ready])
 }
 
-/// DotMD quit after adding a folder and before its first scan wrote anything. The next launch's scan is the first.
+/// dotPen quit after adding a folder and before its first scan wrote anything. The next launch's scan is the first.
 @MainActor @Test func anInterruptedFirstScanStillCountsEverythingAsRead() async throws {
     let temp = try TempFolder()
     try temp.write("README.md", "# Repo")

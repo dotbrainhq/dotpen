@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    /// Declared in Info.plist as an imported type so DotMD opens .md, .markdown and .mdown files.
+    /// Declared in Info.plist as an imported type so dotPen opens .md, .markdown and .mdown files.
     static let markdown = UTType(importedAs: "net.daringfireball.markdown", conformingTo: .plainText)
 }
 

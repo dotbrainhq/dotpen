@@ -125,7 +125,7 @@ private struct EdgeScreen<Mark: View, Footer: View>: View {
     }
 }
 
-/// A watched folder DotMD can't open anymore. Comments and read history stay until the person stops watching it.
+/// A watched folder dotPen can't open anymore. Comments and read history stay until the person stops watching it.
 struct AccessLostView: View {
     let folder: FolderState
     @Environment(Library.self) private var library
@@ -134,7 +134,7 @@ struct AccessLostView: View {
     var body: some View {
         EdgeScreen(
             title: "\(folder.folder.name) is out of reach",
-            message: "DotMD can no longer see this folder. Show it where \(folder.folder.name) lives now, and your comments and read history pick up right where you left them. Deleted it on purpose? Stop watching it."
+            message: "dotPen can no longer see this folder. Show it where \(folder.folder.name) lives now, and your comments and read history pick up right where you left them. Deleted it on purpose? Stop watching it."
         ) {
             LockedTrailMark()
         } footer: {
@@ -150,14 +150,14 @@ struct AccessLostView: View {
             Button("Stop Watching", role: .destructive) { library.removeFolder(folder.id) }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Your files stay exactly where they are. DotMD forgets its comments and read history for this folder.")
+            Text("Your files stay exactly where they are. dotPen forgets its comments and read history for this folder.")
         }
     }
 
     private func reconnect() {
         let path = URL(fileURLWithPath: folder.folder.path)
         guard let url = FolderPicker.chooseFolder(
-            message: "Show DotMD where \(folder.folder.name) lives now.",
+            message: "Show dotPen where \(folder.folder.name) lives now.",
             prompt: "Reconnect",
             startingAt: path.deletingLastPathComponent()
         ) else { return }

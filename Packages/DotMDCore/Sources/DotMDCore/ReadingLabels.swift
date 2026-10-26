@@ -1,7 +1,7 @@
 import Foundation
 
 /// The words the reader uses for when something was read: the chip's "since 1:02 PM" and the dotted line's
-/// "You stopped reading here at 1:02 PM". DotMD's copy is English, so the formats are fixed to en_US.
+/// "You stopped reading here at 1:02 PM". dotPen's copy is English, so the formats are fixed to en_US.
 public enum ReadingLabels {
     /// "since 1:02 PM" today, "since yesterday", "since Oct 18" this year, "since Oct 18, 2025" before that.
     public static func since(_ date: Date?, now: Date = .now, calendar: Calendar = .current) -> String {

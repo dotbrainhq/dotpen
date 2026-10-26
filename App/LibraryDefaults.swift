@@ -5,7 +5,7 @@ extension Library {
     /// The library in the app container. If that database can't be created the app still opens files,
     /// with a library that lasts until quit.
     static func makeDefault() -> Library {
-        let url = URL.applicationSupportDirectory.appending(path: "DotMD/library.sqlite")
+        let url = URL.applicationSupportDirectory.appending(path: "dotPen/library.sqlite")
         if let database = try? LibraryDatabase.open(at: url) {
             return Library(database: database)
         }

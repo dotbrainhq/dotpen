@@ -34,7 +34,7 @@ struct LibraryReader: View {
                 ContentUnavailableView(
                     "This file won't open",
                     systemImage: "doc.questionmark",
-                    description: Text("DotMD couldn't read \(document.relativePath). It tries again as soon as the file changes.")
+                    description: Text("dotPen couldn't read \(document.relativePath). It tries again as soon as the file changes.")
                 )
             } else {
                 Color.clear

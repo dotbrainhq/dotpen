@@ -155,7 +155,7 @@ private struct CapButtonBody<Label: View>: View {
     }
 }
 
-/// The prototype's `.count`: how many comments the next Send carries, on DotMD's green.
+/// The prototype's `.count`: how many comments the next Send carries, on dotPen's green.
 struct CountBadge: View {
     let count: Int
 

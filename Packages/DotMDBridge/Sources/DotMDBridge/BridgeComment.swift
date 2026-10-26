@@ -37,7 +37,7 @@ public enum ReviewStatus: Equatable, Sendable {
     case pending
     /// The person marked it done; these are the open comments they left on the file.
     case done([BridgeComment])
-    /// No such review, for example because DotMD quit since it was asked for.
+    /// No such review, for example because dotPen quit since it was asked for.
     case unknown
 }
 

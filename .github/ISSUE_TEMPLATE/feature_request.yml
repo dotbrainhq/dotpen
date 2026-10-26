@@ -1,5 +1,5 @@
 name: Feature request
-description: An idea for something DotMD could do.
+description: An idea for something dotPen could do.
 labels: [ "enhancement" ]
 body:
   - type: markdown
@@ -10,7 +10,7 @@ body:
   - type: dropdown
     id: area
     attributes:
-      label: Which part of DotMD?
+      label: Which part of dotPen?
       options:
         - "Reader"
         - "File list"
@@ -32,7 +32,7 @@ body:
   - type: textarea
     id: solution
     attributes:
-      label: What would you like DotMD to do?
+      label: What would you like dotPen to do?
     validations:
       required: true
 

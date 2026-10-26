@@ -1,7 +1,7 @@
 import DotMDCore
 import SwiftUI
 
-/// The prototype's Send sheet: the prompt DotMD builds from the comments, two switches, and Copy prompt or Send.
+/// The prototype's Send sheet: the prompt dotPen builds from the comments, two switches, and Copy prompt or Send.
 /// Send copies the prompt too, so it works whether or not the agent reads comments through the bridge.
 struct SendSheet: View {
     /// Who the comments go to, like "Claude Code".
@@ -44,7 +44,7 @@ struct SendSheet: View {
             .padding(.vertical, 1.5)
             .padding(.bottom, 4)
             .accessibilityAddTraits(.isHeader)
-            Text("DotMD turns your comments into a prompt with the exact lines they point at.")
+            Text("dotPen turns your comments into a prompt with the exact lines they point at.")
                 .font(.system(size: 12.5))
                 .foregroundStyle(Palette.ink3)
                 .padding(.bottom, 14)
@@ -186,7 +186,7 @@ private struct LabeledSwitchStyle: ToggleStyle {
     }
 }
 
-/// The prototype's `.live`: DotMD's green dot with a ring that grows and fades, still when motion is reduced.
+/// The prototype's `.live`: dotPen's green dot with a ring that grows and fades, still when motion is reduced.
 struct LiveDot: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pulsing = false

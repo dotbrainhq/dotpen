@@ -12,7 +12,7 @@ struct DotMDApp: App {
     @State private var navigator = AppServices.navigator
 
     var body: some Scene {
-        Window("DotMD", id: "files") {
+        Window("dotPen", id: "files") {
             FilesWindow()
                 .environment(navigator)
                 .environment(library)
@@ -43,7 +43,7 @@ struct DotMDApp: App {
             PaletteCommands()
         }
 
-        Window("About DotMD", id: "about") {
+        Window("About dotPen", id: "about") {
             AboutView()
                 // As in the system's About panels, only the close button works.
                 .windowMinimizeBehavior(.disabled)
@@ -75,7 +75,7 @@ struct DotMDApp: App {
                 .environment(navigator)
         } label: {
             Image("MenuBarIcon")
-                .accessibilityLabel("DotMD")
+                .accessibilityLabel("dotPen")
         }
         .menuBarExtraStyle(.menu)
 

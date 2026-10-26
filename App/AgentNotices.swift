@@ -100,7 +100,7 @@ struct FinishedPill: View {
     }
 }
 
-/// The pills' 26 point buttons: a soft fill, or DotMD's green for Review Changes.
+/// The pills' 26 point buttons: a soft fill, or dotPen's green for Review Changes.
 private struct PillButtonStyle: ButtonStyle {
     let primary: Bool
 

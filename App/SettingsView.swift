@@ -125,7 +125,7 @@ private struct FoldersSettings: View {
                     .toggleStyle(SwitchToggleStyle())
             }
             SettingsDivider()
-            SettingsRow(title: "Watch another folder", detail: "DotMD lists every Markdown file inside it and watches it for changes.") {
+            SettingsRow(title: "Watch another folder", detail: "dotPen lists every Markdown file inside it and watches it for changes.") {
                 Button("Choose…", action: addFolder)
                     .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
             }
@@ -139,7 +139,7 @@ private struct FoldersSettings: View {
             Button("Stop Watching", role: .destructive) { library.removeFolder(folder.id) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("DotMD forgets which files you've read in it. Your files stay as they are.")
+            Text("dotPen forgets which files you've read in it. Your files stay as they are.")
         }
     }
 
@@ -153,14 +153,14 @@ private struct FoldersSettings: View {
     }
 
     private func addFolder() {
-        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
+        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. dotPen lists every Markdown file inside it.") else { return }
         FileActions.watch(url, in: library)
     }
 
     private func reconnect(_ folder: FolderState) {
         let path = URL(fileURLWithPath: folder.folder.path)
         guard let url = FolderPicker.chooseFolder(
-            message: "Choose \(folder.folder.name) again so DotMD can read it.",
+            message: "Choose \(folder.folder.name) again so dotPen can read it.",
             prompt: "Reconnect",
             startingAt: path.deletingLastPathComponent()
         ) else { return }
@@ -168,14 +168,14 @@ private struct FoldersSettings: View {
     }
 }
 
-/// The agent bridge's switch, then how each agent connects once it's on, then the agent logs DotMD may read.
+/// The agent bridge's switch, then how each agent connects once it's on, then the agent logs dotPen may read.
 private struct IntegrationsSettings: View {
     @Environment(AgentBridge.self) private var bridge
     @Environment(AgentActivity.self) private var activity
     @Environment(SpotlightIndex.self) private var spotlight
 
-    /// Writes cli/dotmd to /usr/local/bin. The person runs it; a sandboxed app can't install a command.
-    static let installCommand = #"printf '%s\n' '#!/bin/sh' '[ "$#" -eq 0 ] && set -- .' 'exec open -b app.dotmd.DotMD "$@"' | sudo tee /usr/local/bin/dotmd > /dev/null && sudo chmod +x /usr/local/bin/dotmd"#
+    /// Writes cli/dotpen to /usr/local/bin. The person runs it; a sandboxed app can't install a command.
+    static let installCommand = #"printf '%s\n' '#!/bin/sh' '[ "$#" -eq 0 ] && set -- .' 'exec open -b app.dotpen.dotPen "$@"' | sudo tee /usr/local/bin/dotpen > /dev/null && sudo chmod +x /usr/local/bin/dotpen"#
 
     var body: some View {
         VStack(spacing: 0) {
@@ -191,7 +191,7 @@ private struct IntegrationsSettings: View {
                 .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
             }
             SettingsDivider()
-            SettingsRow(title: "Command line", detail: "Run the copied command once in Terminal. Then try dotmd plan.md.") {
+            SettingsRow(title: "Command line", detail: "Run the copied command once in Terminal. Then try dotpen plan.md.") {
                 Button("Copy Command") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(Self.installCommand, forType: .string)
@@ -227,7 +227,7 @@ private struct IntegrationsSettings: View {
             case .off:
                 EmptyView()
             }
-            // Reading an agent's logs is how DotMD names who wrote a file and follows a file while it's written.
+            // Reading an agent's logs is how dotPen names who wrote a file and follows a file while it's written.
             ForEach(Agent.allCases, id: \.self) { agent in
                 SettingsDivider()
                 SettingsRow(title: "\(agent.name) sessions",
@@ -345,7 +345,7 @@ private struct AboutFooter: View {
                 .frame(width: 40, height: 40)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text("DotMD \(version)")
+                Text("dotPen \(version)")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                 Text("Read what your agents write. Open source, nothing leaves your Mac.")
@@ -366,7 +366,7 @@ private struct AboutFooter: View {
     }
 }
 
-/// DotMD > Settings… (⌘,) opens the Settings window above.
+/// dotPen > Settings… (⌘,) opens the Settings window above.
 struct SettingsCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 

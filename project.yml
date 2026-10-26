@@ -1,6 +1,6 @@
 name: DotMD
 options:
-  bundleIdPrefix: app.dotmd
+  bundleIdPrefix: app.dotpen
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
@@ -29,13 +29,13 @@ targets:
     settings:
       base:
         # Placeholder ID and ad hoc signing until the developer account is ready.
-        PRODUCT_BUNDLE_IDENTIFIER: app.dotmd.DotMD
-        PRODUCT_NAME: DotMD
+        PRODUCT_BUNDLE_IDENTIFIER: app.dotpen.dotPen
+        PRODUCT_NAME: dotPen
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: App/Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: DotMD
+        INFOPLIST_KEY_CFBundleDisplayName: dotPen
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Dotbrain LLC"
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -55,13 +55,13 @@ targets:
         product: DotMDRender
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.dotmd.DotMD.QuickLook
-        PRODUCT_NAME: DotMDQuickLook
+        PRODUCT_BUNDLE_IDENTIFIER: app.dotpen.dotPen.QuickLook
+        PRODUCT_NAME: dotPenQuickLook
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: QuickLook/Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: DotMD Quick Look
+        INFOPLIST_KEY_CFBundleDisplayName: dotPen Quick Look
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_ENTITLEMENTS: QuickLook/QuickLook.entitlements
         SWIFT_VERSION: "6.0"

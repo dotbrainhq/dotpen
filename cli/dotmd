@@ -1,7 +1,0 @@
-#!/bin/sh
-# dotmd: open Markdown files, or watch folders, in DotMD.
-#   dotmd plan.md        open a file
-#   dotmd ~/code/api     watch a folder
-#   dotmd                watch the folder you're in
-[ "$#" -eq 0 ] && set -- .
-exec open -b app.dotmd.DotMD "$@"

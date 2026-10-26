@@ -4,7 +4,7 @@ import Foundation
 import Observation
 
 /// Who is writing what, read from the agents' session logs once the person allows each log folder in Settings.
-/// Without access, DotMD still works: files show as written, just without an agent's name.
+/// Without access, dotPen still works: files show as written, just without an agent's name.
 @MainActor
 @Observable
 final class AgentActivity {
@@ -76,7 +76,7 @@ final class AgentActivity {
     /// Asks for an agent's log folder in an open panel, starting where the agent keeps it.
     func grantAccess(to agent: Agent) {
         guard let url = FolderPicker.chooseFolder(
-            message: "Choose \(Self.logFolderName(for: agent)) so DotMD can see which files \(agent.name) writes. DotMD only reads it, on this Mac.",
+            message: "Choose \(Self.logFolderName(for: agent)) so dotPen can see which files \(agent.name) writes. dotPen only reads it, on this Mac.",
             prompt: "Allow",
             startingAt: Self.logFolder(for: agent),
             showsHidden: true
@@ -120,7 +120,7 @@ final class AgentActivity {
     }
 
     /// Sessions writing in a watched folder right now, newest first, for the menu bar item. Sessions working
-    /// elsewhere on the Mac are none of DotMD's business and never show.
+    /// elsewhere on the Mac are none of dotPen's business and never show.
     var writingSessions: [(session: AgentSession, write: AgentWrite)] {
         sessions.values.compactMap { session -> (AgentSession, AgentWrite)? in
             guard now.timeIntervalSince(session.lastActivity) <= Self.activeWindow,
@@ -142,7 +142,7 @@ final class AgentActivity {
 
     private func watch(_ agent: Agent, at url: URL) {
         let folder = SessionLogFolder(root: url, agent: agent)
-        let queue = DispatchQueue(label: "app.dotmd.logs.\(agent.rawValue)")
+        let queue = DispatchQueue(label: "app.dotpen.logs.\(agent.rawValue)")
         // Log lines arrive many times a second while an agent works; half a second keeps that to a few scans.
         let watcher = FolderWatcher(url: url, latency: 0.5) { [weak self] _ in
             queue.async {

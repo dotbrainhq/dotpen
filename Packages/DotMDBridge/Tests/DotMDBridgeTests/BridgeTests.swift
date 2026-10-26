@@ -61,14 +61,14 @@ private func call(_ tools: MCPTools, _ name: String, _ arguments: [String: Any] 
         #expect(response["id"] as? Int == 1)
         #expect(result["protocolVersion"] as? String == "2025-03-26")
         #expect((result["capabilities"] as? [String: Any])?["tools"] != nil)
-        #expect((result["serverInfo"] as? [String: Any])?["name"] as? String == "dotmd")
+        #expect((result["serverInfo"] as? [String: Any])?["name"] as? String == "dotpen")
     }
 
     @Test func initializeNamesDotMDWithItsIcon() async throws {
         let tools = MCPTools(source: source, version: "0.1.0", icon: Data([0x89, 0x50, 0x4E, 0x47]))
         let response = try #require(await tools.respond(to: ["jsonrpc": "2.0", "id": 1, "method": "initialize"]))
         let info = try #require((response["result"] as? [String: Any])?["serverInfo"] as? [String: Any])
-        #expect(info["title"] as? String == "DotMD")
+        #expect(info["title"] as? String == "dotPen")
         #expect((info["description"] as? String)?.isEmpty == false)
         let icon = try #require((info["icons"] as? [[String: Any]])?.first)
         #expect(icon["src"] as? String == "data:image/png;base64,iVBORw==")

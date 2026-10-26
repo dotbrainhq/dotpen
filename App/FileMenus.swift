@@ -54,7 +54,7 @@ struct FolderMenu: View {
     private func reconnect() {
         let parent = URL(fileURLWithPath: folder.folder.path).deletingLastPathComponent()
         guard let url = FolderPicker.chooseFolder(
-            message: "DotMD lost access to \(folder.folder.name). Choose it again to keep watching it.",
+            message: "dotPen lost access to \(folder.folder.name). Choose it again to keep watching it.",
             prompt: "Choose",
             startingAt: parent
         ) else { return }

@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- DotMD collects nothing and tracks no one: everything it reads and stores stays on the Mac. -->
+	<!-- dotPen collects nothing and tracks no one: everything it reads and stores stays on the Mac. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
@@ -11,7 +11,7 @@
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
-		<!-- Reading options, window layout and Settings, read only by DotMD itself. -->
+		<!-- Reading options, window layout and Settings, read only by dotPen itself. -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>

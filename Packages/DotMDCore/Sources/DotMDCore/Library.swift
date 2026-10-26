@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Whether DotMD can reach a watched folder.
+/// Whether dotPen can reach a watched folder.
 public enum FolderStatus: Sendable, Equatable {
     /// Listed, with its bookmark not resolved yet.
     case connecting
@@ -66,7 +66,7 @@ public final class Library {
     @ObservationIgnored private let database: LibraryDatabase
     @ObservationIgnored private var watchers: [Int64: FolderWatcher] = [:]
     @ObservationIgnored private var writingTimers: [Int64: Task<(), Never>] = [:]
-    /// Content hashes of writes DotMD made itself, a ticked task: the change they bring isn't an agent writing.
+    /// Content hashes of writes dotPen made itself, a ticked task: the change they bring isn't an agent writing.
     @ObservationIgnored private var ownWrites: Set<String> = []
     @ObservationIgnored private var started = false
     /// The URL each folder's security-scoped access was started on. Paths use the canonical root instead.
@@ -196,25 +196,25 @@ public final class Library {
         if let updated = try? database.markRead(documentID: document.key, content: Data(text.utf8)) { put(updated) }
     }
 
-    /// Swaps the text kept as last read, keeping when it was read: a task ticked in DotMD isn't a change to review.
+    /// Swaps the text kept as last read, keeping when it was read: a task ticked in dotPen isn't a change to review.
     public func replaceReadText(_ document: Document, with text: String) {
         let readAt = lastReadDate(for: document) ?? .now
         if let updated = try? database.markRead(documentID: document.key, content: Data(text.utf8), at: readAt) { put(updated) }
     }
 
-    /// DotMD is about to write this content to a watched file itself.
+    /// dotPen is about to write this content to a watched file itself.
     public func expectOwnWrite(_ content: Data) {
         ownWrites.insert(Snapshots.hash(content))
     }
 
-    /// The text the person last read, when DotMD kept it.
+    /// The text the person last read, when dotPen kept it.
     public func lastReadText(for document: Document) -> String? {
         guard let hash = document.readHash else { return nil }
         return try? database.snapshotText(hash: hash)
     }
 
     /// When the person last read the file. Files read by a folder's first scan, or before read times were kept,
-    /// date from when DotMD kept their text.
+    /// date from when dotPen kept their text.
     public func lastReadDate(for document: Document) -> Date? {
         if let date = document.lastReadAt { return date }
         guard let hash = document.readHash else { return nil }
@@ -367,7 +367,7 @@ public final class Library {
         return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
     }
 
-    /// The folder's root went away. A moved folder's bookmark still finds it, so DotMD watches it there, as a relaunch
+    /// The folder's root went away. A moved folder's bookmark still finds it, so dotPen watches it there, as a relaunch
     /// would, and scans it behind the current job. A deleted folder keeps its rows and read state and shows as
     /// needing reconnection.
     private func loseAccess(_ id: Int64) {
@@ -647,7 +647,7 @@ public final class Library {
 
     var watcherCountForTesting: Int { watchers.count }
 
-    /// Stops file events without forgetting the folders, so a test can change files as if DotMD were closed.
+    /// Stops file events without forgetting the folders, so a test can change files as if dotPen were closed.
     func removeFolderWatchersForTesting() {
         for watcher in watchers.values { watcher.cancel() }
         watchers.removeAll()

@@ -285,7 +285,7 @@ struct ReaderScreen: View {
             return PageNotice(
                 icon: "gauge",
                 title: "This one's big, \(size).",
-                text: "DotMD shows the first 2,000 lines so it stays quick.",
+                text: "dotPen shows the first 2,000 lines so it stays quick.",
                 buttons: [PageNotice.Button(id: "showAll", label: "Show All")]
             )
         }
@@ -623,7 +623,7 @@ struct ReaderScreen: View {
     }
 
     /// Diffs the file against the text last read and marks the page. A changed file with nothing to show, because
-    /// DotMD has no copy of what was read or only front matter changed, is marked read instead.
+    /// dotPen has no copy of what was read or only front matter changed, is marked read instead.
     private func refreshMarks() async {
         guard let document = libraryDocument, document.readState == .changed else { return }
         guard let old = library.lastReadText(for: document) else {
@@ -671,7 +671,7 @@ struct ReaderScreen: View {
     // MARK: Tasks
 
     /// A box ticked on the page goes into the file, if the file on disk is still the text on screen. Otherwise the
-    /// page draws again from what DotMD has, so the box shows what the file says.
+    /// page draws again from what dotPen has, so the box shows what the file says.
     private func tick(line: Int, checked: Bool) async {
         guard let fileURL else { return }
         let shown = text
@@ -685,7 +685,7 @@ struct ReaderScreen: View {
         if document != nil { library.expectOwnWrite(content) }
         // Set first, so the file watcher finds nothing new to draw or glow.
         text = tick.text
-        // In place, not by replacing the file: a file opened on its own gives DotMD no folder to write a new one in.
+        // In place, not by replacing the file: a file opened on its own gives dotPen no folder to write a new one in.
         let saved = await Task.detached { (try? content.write(to: fileURL)) != nil }.value
         guard saved else {
             text = shown
@@ -702,7 +702,7 @@ struct ReaderScreen: View {
         }
     }
 
-    /// Accept in the review bar: the change goes into the copy DotMD counts as read, so it stops showing. The file
+    /// Accept in the review bar: the change goes into the copy dotPen counts as read, so it stops showing. The file
     /// stays as the agent wrote it. The page then moves on to the next change.
     private func acceptChange(kind: String, line: Int) {
         guard let document = libraryDocument, let kind = ChangeKind(rawValue: kind),

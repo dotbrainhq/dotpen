@@ -1,6 +1,6 @@
 import Foundation
 
-/// An agent whose session logs DotMD can read to tell who wrote a file.
+/// An agent whose session logs dotPen can read to tell who wrote a file.
 public enum Agent: String, Codable, Sendable, CaseIterable {
     case claudeCode, codex
 
@@ -199,7 +199,7 @@ public final class SessionLogTail: @unchecked Sendable {
     }
 }
 
-/// An agent's log folder. Logs changed in the last `recent` seconds are read from the start, so DotMD knows who
+/// An agent's log folder. Logs changed in the last `recent` seconds are read from the start, so dotPen knows who
 /// wrote what today; older ones from their end, so a resumed session is followed without replaying its history.
 /// Compressed Codex logs (`.jsonl.zst`) are old sessions and are skipped.
 public final class SessionLogFolder: @unchecked Sendable {

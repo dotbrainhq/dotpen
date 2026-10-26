@@ -99,7 +99,7 @@ public enum ReaderCommand: Sendable {
     case nextChange
     /// The notice above the page, or none.
     case setNotice(PageNotice?)
-    /// Task boxes tick, for a file DotMD may write to. Off by default, as in Quick Look.
+    /// Task boxes tick, for a file dotPen may write to. Off by default, as in Quick Look.
     case setTasksEditable(Bool)
     /// Show Source: the file as written instead of the page.
     case setSource(Bool)

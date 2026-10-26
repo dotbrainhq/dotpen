@@ -2,7 +2,7 @@ import DotMDCore
 import SwiftUI
 
 /// The prototype's sidebar colors, read by name from the asset catalog, which holds the light and dark values.
-/// DotMD's green is read by name as well: Color.accentColor follows the person's system accent instead.
+/// dotPen's green is read by name as well: Color.accentColor follows the person's system accent instead.
 enum Palette {
     static let ink = Color("SideInk")
     static let ink3 = Color("SideInk3")
@@ -27,7 +27,7 @@ enum Palette {
     /// Raised surfaces, like the list of folders first launch found, with their softer row lines.
     static let raised = Color("RaisedBackground")
     static let lineSoft = Color("LineSoft")
-    /// Text on DotMD's green.
+    /// Text on dotPen's green.
     static let onAccent = Color("OnAccent")
     /// The comments panel: a selected comment's ring, and a resolved comment's quote bar.
     static let accentLine = Color("AccentLine")
@@ -43,7 +43,7 @@ enum Palette {
     /// Agent badges, as in the status line: Claude Code warm, Codex graphite. Never green.
     static let agentClaude = Color("AgentClaude")
     static let agentCodex = Color("AgentCodex")
-    /// The prototype's amber, for a folder DotMD can't open.
+    /// The prototype's amber, for a folder dotPen can't open.
     static let warn = Color("Warn")
 }
 

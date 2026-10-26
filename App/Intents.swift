@@ -57,7 +57,7 @@ enum IntentError: Error, CustomLocalizedStringResourceConvertible {
     case fileNotFound
 
     var localizedStringResource: LocalizedStringResource {
-        "DotMD can't find that file in its watched folders."
+        "dotPen can't find that file in its watched folders."
     }
 }
 
@@ -70,10 +70,10 @@ private func document(_ entity: MarkdownFileEntity) async throws -> (DotMDCore.D
     return (document, url, text)
 }
 
-/// Opens a file in a DotMD window.
+/// Opens a file in a dotPen window.
 struct OpenFileIntent: AppIntent {
     static let title: LocalizedStringResource = "Open File"
-    static let description = IntentDescription("Opens a Markdown file from DotMD's watched folders.")
+    static let description = IntentDescription("Opens a Markdown file from dotPen's watched folders.")
     static let openAppWhenRun = true
 
     @Parameter(title: "File") var file: MarkdownFileEntity
@@ -89,7 +89,7 @@ struct OpenFileIntent: AppIntent {
 /// What changed in a file since you last read it, one line per change, as Send's change notes put it.
 struct ChangesSinceReadIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Changes Since Last Read"
-    static let description = IntentDescription("Lists what changed in a Markdown file since you last read it in DotMD.")
+    static let description = IntentDescription("Lists what changed in a Markdown file since you last read it in dotPen.")
 
     @Parameter(title: "File") var file: MarkdownFileEntity
 
@@ -107,7 +107,7 @@ struct ChangesSinceReadIntent: AppIntent {
 /// Every unticked task in the watched folders, with the file it's in.
 struct ListOpenTasksIntent: AppIntent {
     static let title: LocalizedStringResource = "List Open Tasks"
-    static let description = IntentDescription("Lists the unticked tasks in every Markdown file DotMD watches.")
+    static let description = IntentDescription("Lists the unticked tasks in every Markdown file dotPen watches.")
 
     @MainActor
     func perform() async throws -> some IntentResult & ReturnsValue<[String]> {

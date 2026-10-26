@@ -25,7 +25,7 @@ struct DocumentExporter {
                 }
             } catch {
                 let alert = NSAlert(error: error)
-                alert.messageText = "DotMD couldn't export this file"
+                alert.messageText = "dotPen couldn't export this file"
                 alert.runModal()
             }
         }

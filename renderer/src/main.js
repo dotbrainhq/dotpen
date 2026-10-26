@@ -93,7 +93,7 @@ function clearCurrent() {
   hideChangeBar(document);
 }
 
-// Takes the change into what DotMD counts as read. The file stays as the agent wrote it.
+// Takes the change into what dotPen counts as read. The file stays as the agent wrote it.
 function acceptCurrent() {
   if (!current) return;
   advanceFrom = Math.max(current.at, 1);
@@ -115,7 +115,7 @@ function sendBackCurrent() {
   compose({ info: { line: Number(block.dataset.line), text }, range });
 }
 
-// DotMD's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
+// dotPen's layers over the rendered page. Later tasks add the map, the reading line and the caret here.
 function decorate(doc) {
   if (memory) showMemory(doc, memory);
   showCaret(doc, writing.writing, writing.lastLine);
@@ -310,7 +310,7 @@ function pageIsDark() {
   return darkQuery.matches;
 }
 
-// <picture> sources follow DotMD's page color, not the system appearance.
+// <picture> sources follow dotPen's page color, not the system appearance.
 function applyPictureTheme(doc) {
   const dark = pageIsDark();
   for (const source of doc.querySelectorAll('picture source[media]')) {
@@ -367,7 +367,7 @@ async function renderDiagram(source, theme) {
   window.mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',
-    // DotMD shows its own card in the figure; Mermaid's error graphic would land at the end of the page.
+    // dotPen shows its own card in the figure; Mermaid's error graphic would land at the end of the page.
     suppressErrorRendering: true,
     theme,
     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',

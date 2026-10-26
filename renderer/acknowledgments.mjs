@@ -1,4 +1,4 @@
-// Writes App/Acknowledgments.md: every open-source package DotMD ships, with its license. The npm list comes from
+// Writes App/Acknowledgments.md: every open-source package dotPen ships, with its license. The npm list comes from
 // the renderer's real bundle (same entry points as build.mjs), so it never lists a package the app doesn't carry.
 // Run after changing dependencies: npm run acknowledgments (the Swift packages need one Xcode build first).
 import { build } from 'esbuild';
@@ -77,7 +77,7 @@ const sections = entries.map((entry) => [
 
 const page = `# Acknowledgments
 
-DotMD stands on the work of the people who wrote and maintain these ${entries.length} open-source projects. Each one is listed with its license.
+dotPen stands on the work of the people who wrote and maintain these ${entries.length} open-source projects. Each one is listed with its license.
 
 ${sections.join('\n\n')}
 `;

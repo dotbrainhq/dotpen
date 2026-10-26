@@ -20,7 +20,7 @@ enum AppServices {
         spotlight.update()
     }
 
-    /// Files open in a document window; folders get watched. `dotmd <path>`, Finder's Open in DotMD service, and
+    /// Files open in a document window; folders get watched. `dotmd <path>`, Finder's Open in dotPen service, and
     /// Spotlight's Open With all come through here.
     static func open(_ urls: [URL]) {
         for url in urls {
@@ -33,7 +33,7 @@ enum AppServices {
     }
 }
 
-/// Hands opened files and folders to AppServices, and offers the Open in DotMD service.
+/// Hands opened files and folders to AppServices, and offers the Open in dotPen service.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = ServicesProvider()
@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
-/// Finder's Services menu: Open in DotMD for Markdown files and folders.
+/// Finder's Services menu: Open in dotPen for Markdown files and folders.
 final class ServicesProvider: NSObject {
     @objc func openInDotMD(_ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
         let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []

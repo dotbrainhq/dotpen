@@ -30,7 +30,7 @@ test('a notice sits above the page with its buttons', () => {
 
 test('a new notice replaces the old one, and none removes it', () => {
   const d = page();
-  showNotice(d, { icon: 'gauge', title: "This one's big, 2.4 MB.", text: 'DotMD shows the first 2,000 lines so it stays quick.', buttons: [] }, () => {});
+  showNotice(d, { icon: 'gauge', title: "This one's big, 2.4 MB.", text: 'dotPen shows the first 2,000 lines so it stays quick.', buttons: [] }, () => {});
   showNotice(d, { icon: 'trash', title: 'Gone.', text: '', buttons: [] }, () => {});
   assert.equal(d.querySelectorAll('.notice').length, 1);
   assert.match(d.querySelector('.notice b').textContent, /Gone/);

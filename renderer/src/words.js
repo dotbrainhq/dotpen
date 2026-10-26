@@ -1,4 +1,4 @@
-// DotMD's own controls and KaTeX's hidden MathML aren't part of a block's words.
+// dotPen's own controls and KaTeX's hidden MathML aren't part of a block's words.
 const SKIP = '[data-dotmd-ui], .katex-mathml, .code-lang, button.copy';
 
 /** The text nodes a block shows, in order. */

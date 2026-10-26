@@ -337,7 +337,7 @@ struct CommandPalette: View {
     }
 }
 
-/// The prototype's `.keys`: every shortcut DotMD has, in three columns.
+/// The prototype's `.keys`: every shortcut dotPen has, in three columns.
 struct ShortcutsOverlay: View {
     let close: () -> ()
     @Environment(\.colorScheme) private var colorScheme

@@ -8,12 +8,12 @@
             <key>NSMenuItem</key>
             <dict>
                 <key>default</key>
-                <string>Open in DotMD</string>
+                <string>Open in dotPen</string>
             </dict>
             <key>NSMessage</key>
             <string>openInDotMD</string>
             <key>NSPortName</key>
-            <string>DotMD</string>
+            <string>dotPen</string>
             <key>NSRequiredContext</key>
             <dict/>
             <key>NSSendFileTypes</key>

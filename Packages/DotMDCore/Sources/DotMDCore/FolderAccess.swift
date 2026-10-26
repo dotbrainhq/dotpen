@@ -4,7 +4,7 @@ public enum FolderAccessError: Error {
     case accessDenied
 }
 
-/// Security-scoped bookmarks: the only way a sandboxed DotMD keeps a folder the person chose.
+/// Security-scoped bookmarks: the only way a sandboxed dotPen keeps a folder the person chose.
 public enum FolderAccess {
     public struct Resolved: Sendable {
         public let url: URL

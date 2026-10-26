@@ -3,7 +3,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/dotbrainhq/dotmd/main/.github/assets/cover-dark.png">
-    <img src="https://raw.githubusercontent.com/dotbrainhq/dotmd/main/.github/assets/cover-light.png" alt="DotMD cover" width="480">
+    <img src="https://raw.githubusercontent.com/dotbrainhq/dotmd/main/.github/assets/cover-light.png" alt="dotPen cover" width="480">
   </picture>
 </p>
 

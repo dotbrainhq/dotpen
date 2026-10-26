@@ -7,7 +7,7 @@ public final class BridgeServer: @unchecked Sendable {
     public static let defaultPort: UInt16 = 47319
 
     private let tools: MCPTools
-    private let queue = DispatchQueue(label: "app.dotmd.bridge")
+    private let queue = DispatchQueue(label: "app.dotpen.bridge")
     /// Touched only on the queue.
     private var listener: NWListener?
 

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Ticking a task box, the one edit DotMD makes to a file. Only the box's character changes, so line numbers,
+/// Ticking a task box, the one edit dotPen makes to a file. Only the box's character changes, so line numbers,
 /// line endings and everything else in the file stay as they were.
 public enum TaskToggle {
     public struct Tick: Equatable, Sendable {

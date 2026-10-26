@@ -28,7 +28,7 @@ private let rescanFlags = UInt32(kFSEventStreamEventFlagMustScanSubDirs | kFSEve
 /// The owner keeps the watcher alive and calls cancel() when it stops watching.
 public final class FolderWatcher: @unchecked Sendable {
     private var stream: FSEventStreamRef?
-    private let queue = DispatchQueue(label: "app.dotmd.folder-watcher")
+    private let queue = DispatchQueue(label: "app.dotpen.folder-watcher")
     private let queueKey = DispatchSpecificKey<Void>()
     private let onChange: @Sendable ([FolderEvent]) -> ()
 

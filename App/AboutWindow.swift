@@ -1,12 +1,12 @@
 import AppKit
 import SwiftUI
 
-/// DotMD > About DotMD: the icon on the brand gradient, the wordmark and tagline, a version line that copies itself
+/// dotPen > About dotPen: the icon on the brand gradient, the wordmark and tagline, a version line that copies itself
 /// for bug reports, and the links people look for in an About window.
 struct AboutView: View {
     @State private var copied = false
 
-    private static let website = URL(string: "https://dotbrainhq.com/dotmd")!
+    private static let website = URL(string: "https://dotpen.app")!
     private static let privacy = URL(string: "https://dotbrainhq.com/privacy")!
     private static let contact = URL(string: "https://dotbrainhq.com/contact")!
 
@@ -19,12 +19,12 @@ struct AboutView: View {
                 .shadow(color: .black.opacity(0.18), radius: 14, y: 8)
                 .padding(.top, 34)
                 .accessibilityHidden(true)
-            // The cover's wordmark: "Dot" in ink, "MD" in DotMD's green.
-            (Text("Dot").foregroundStyle(Palette.ink) + Text("MD").foregroundStyle(Palette.accent))
+            // The wordmark: "dot" in ink, as in Dotbrain's other names, and "Pen" in dotPen's green.
+            (Text("dot").foregroundStyle(Palette.ink) + Text("Pen").foregroundStyle(Palette.accent))
                 .font(.system(size: 30, weight: .heavy))
                 .tracking(-0.6)
                 .padding(.top, 18)
-                .accessibilityLabel("DotMD")
+                .accessibilityLabel("dotPen")
             Text("Read what your agents write.")
                 .font(.system(size: 13))
                 .foregroundStyle(Palette.ink3)
@@ -89,7 +89,7 @@ struct AboutView: View {
     private func copyVersion() {
         let os = ProcessInfo.processInfo.operatingSystemVersion
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString("DotMD \(Self.version) on macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)", forType: .string)
+        NSPasteboard.general.setString("dotPen \(Self.version) on macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)", forType: .string)
         withAnimation(.easeOut(duration: 0.15)) { copied = true }
         Task {
             try? await Task.sleep(for: .seconds(1.6))
@@ -97,7 +97,7 @@ struct AboutView: View {
         }
     }
 
-    /// The licenses ship as Markdown in the app, so DotMD opens them in its own reader.
+    /// The licenses ship as Markdown in the app, so dotPen opens them in its own reader.
     private func openAcknowledgments() {
         guard let url = Bundle.main.url(forResource: "Acknowledgments", withExtension: "md") else { return }
         FileActions.openInNewWindow(url)
@@ -134,7 +134,7 @@ private struct Dot: View {
     }
 }
 
-/// The spec's brand backdrop: a mesh of DotMD greens drifting over about 26 seconds. Reduce Motion holds it still.
+/// The spec's brand backdrop: a mesh of dotPen greens drifting over about 26 seconds. Reduce Motion holds it still.
 struct BrandBackdrop: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -181,13 +181,13 @@ private extension Color {
     }
 }
 
-/// DotMD > About DotMD opens the window above in place of the standard panel.
+/// dotPen > About dotPen opens the window above in place of the standard panel.
 struct AboutCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
         CommandGroup(replacing: .appInfo) {
-            Button("About DotMD") { openWindow(id: "about") }
+            Button("About dotPen") { openWindow(id: "about") }
         }
     }
 }

@@ -7,7 +7,7 @@ public struct WatchedFolder: Codable, Equatable, Identifiable, Sendable, Fetchab
 
     public var id: Int64?
     public var bookmark: Data
-    /// The folder's canonical path when DotMD last opened it, for display and for matching file events.
+    /// The folder's canonical path when dotPen last opened it, for display and for matching file events.
     public var path: String
     public var name: String
     public var color: FolderColor

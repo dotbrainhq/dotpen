@@ -1,6 +1,6 @@
 # Security policy
 
-DotMD reads Markdown files on your Mac and renders them, so a bug that lets a document run code or reach files you didn't open matters. I read and answer every report.
+dotPen reads Markdown files on your Mac and renders them, so a bug that lets a document run code or reach files you didn't open matters. I read and answer every report.
 
 ## Supported versions
 

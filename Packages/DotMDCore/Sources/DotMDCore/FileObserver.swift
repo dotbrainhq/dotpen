@@ -6,7 +6,7 @@ public final class FileObserver: @unchecked Sendable {
     private let url: URL
     private let debounce: Duration
     private let onChange: @Sendable () -> ()
-    private let queue = DispatchQueue(label: "app.dotmd.file-observer")
+    private let queue = DispatchQueue(label: "app.dotpen.file-observer")
     private var source: DispatchSourceFileSystemObject?
     private var pendingNotify: DispatchWorkItem?
     private var cancelled = false

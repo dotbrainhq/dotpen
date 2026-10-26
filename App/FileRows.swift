@@ -93,7 +93,7 @@ struct FolderRow: View {
         }
         .foregroundStyle(Palette.ink)
         .animation(.easeOut(duration: 0.15), value: folder.unreadCount > 0 && !folder.accessLost)
-        .help(folder.accessLost ? "DotMD lost access to this folder. Right-click to choose it again." : folder.folder.path)
+        .help(folder.accessLost ? "dotPen lost access to this folder. Right-click to choose it again." : folder.folder.path)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(folder.folder.name)
         .accessibilityValue(accessibilityValue)

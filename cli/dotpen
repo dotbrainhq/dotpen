@@ -1,0 +1,7 @@
+#!/bin/sh
+# dotpen: open Markdown files, or watch folders, in dotPen.
+#   dotpen plan.md        open a file
+#   dotpen ~/code/api     watch a folder
+#   dotpen                watch the folder you're in
+[ "$#" -eq 0 ] && set -- .
+exec open -b app.dotpen.dotPen "$@"

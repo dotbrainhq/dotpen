@@ -42,7 +42,7 @@ func eventually(
     return true
 }
 
-/// Sets a path's permission bits, for tests that need something DotMD can't read.
+/// Sets a path's permission bits, for tests that need something dotPen can't read.
 func setPermissions(_ url: URL, _ mode: Int) throws {
     try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path)
 }

@@ -1,4 +1,4 @@
-# CI for DotMD: renderer tests, Swift package tests, and an app build.
+# CI for dotPen: renderer tests, Swift package tests, and an app build.
 # Branch protection requires only the final "CI passed" job.
 name: CI
 

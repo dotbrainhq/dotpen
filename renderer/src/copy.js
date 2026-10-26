@@ -68,7 +68,7 @@ export function copyHTML(doc, target, { diagramImages = new Map() } = {}) {
   if (target === 'slack') toSlack(clone, d);
   else toDocs(clone);
 
-  // Line attributes are DotMD's own; nothing on the other side needs them.
+  // Line attributes are dotPen's own; nothing on the other side needs them.
   clone.querySelectorAll('[data-line], [data-line-end]').forEach((el) => {
     el.removeAttribute('data-line');
     el.removeAttribute('data-line-end');
