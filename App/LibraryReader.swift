@@ -1,10 +1,10 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// Reads a library file and hands it to the reader. The file's folder is already open through its bookmark.
 struct LibraryReader: View {
     @Environment(Library.self) private var library
-    let document: DotMDCore.Document
+    let document: DotPenCore.Document
     let openDocument: (URL) -> ()
     /// Close on the deleted-file notice: the Files window lets go of the file.
     var close: () -> () = {}

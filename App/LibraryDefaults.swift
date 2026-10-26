@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 extension Library {

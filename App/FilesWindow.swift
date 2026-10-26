@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The Files layout: watched folders on the left, the selected document on the right.
@@ -26,7 +26,7 @@ struct FilesWindow: View {
     @State private var overlay: WindowOverlay?
     /// The last file shown. When it's moved or deleted its row goes, but the reader keeps its last version up,
     /// under the prototype's notice, until the person closes it.
-    @State private var lastDocument: DotMDCore.Document?
+    @State private var lastDocument: DotPenCore.Document?
 
     /// The prototype's sidebar column.
     static let sidebarWidth: CGFloat = 272
@@ -133,7 +133,7 @@ struct FilesWindow: View {
         selection = next
     }
 
-    private var selectedDocument: DotMDCore.Document? {
+    private var selectedDocument: DotPenCore.Document? {
         guard let selection else { return nil }
         return library.folders.lazy.flatMap(\.documents).first { $0.key == selection }
     }

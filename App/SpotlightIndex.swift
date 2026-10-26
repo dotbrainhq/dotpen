@@ -1,5 +1,5 @@
 import CoreSpotlight
-import DotMDCore
+import DotPenCore
 import Foundation
 import Observation
 import UniformTypeIdentifiers
@@ -54,7 +54,7 @@ final class SpotlightIndex {
     }
 
     private func indexChanges() async {
-        var current: [String: (document: DotMDCore.Document, url: URL, folder: String)] = [:]
+        var current: [String: (document: DotPenCore.Document, url: URL, folder: String)] = [:]
         for folder in library.folders {
             for document in folder.documents {
                 guard let url = library.url(for: document) else { continue }
@@ -79,7 +79,7 @@ final class SpotlightIndex {
         for path in gone { indexed[path] = nil }
     }
 
-    static func item(for document: DotMDCore.Document, url: URL, folder: String, text: String) -> CSSearchableItem {
+    static func item(for document: DotPenCore.Document, url: URL, folder: String, text: String) -> CSSearchableItem {
         let attributes = CSSearchableItemAttributeSet(contentType: UTType(importedAs: "net.daringfireball.markdown", conformingTo: .plainText))
         attributes.title = document.title ?? url.lastPathComponent
         attributes.displayName = attributes.title

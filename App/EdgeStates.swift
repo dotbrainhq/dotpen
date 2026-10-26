@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The Trail mark's line, in the prototype's 1000 point drawing: three bends to the right.

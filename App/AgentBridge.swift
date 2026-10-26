@@ -1,6 +1,6 @@
 import AppKit
-import DotMDBridge
-import DotMDCore
+import DotPenBridge
+import DotPenCore
 import Foundation
 import Observation
 
@@ -130,7 +130,7 @@ struct LibraryCommentSource: CommentSource {
     }
 
     @MainActor
-    static func bridgeComment(_ comment: Comment, in document: DotMDCore.Document, library: Library) -> BridgeComment {
+    static func bridgeComment(_ comment: Comment, in document: DotPenCore.Document, library: Library) -> BridgeComment {
         BridgeComment(
             id: comment.key,
             path: library.url(for: document)?.path ?? document.relativePath,

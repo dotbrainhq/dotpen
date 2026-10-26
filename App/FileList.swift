@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The watched folders as an outline, drawn to match the prototype rather than a stock sidebar list.

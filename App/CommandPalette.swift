@@ -1,6 +1,6 @@
-import DotMDBridge
-import DotMDCore
-import DotMDRender
+import DotPenBridge
+import DotPenCore
+import DotPenRender
 import SwiftUI
 
 /// What a window can show over everything: the ⌘K palette or the keyboard shortcuts.
@@ -37,7 +37,7 @@ struct PaletteCommand: Identifiable {
 
 extension View {
     /// The window's overlay layer: the scrim, then the palette or the shortcuts. A click on the scrim closes it.
-    func windowOverlays(_ overlay: Binding<WindowOverlay?>, commands: [PaletteCommand] = [], open: @escaping (DotMDCore.Document, Bool) -> ()) -> some View {
+    func windowOverlays(_ overlay: Binding<WindowOverlay?>, commands: [PaletteCommand] = [], open: @escaping (DotPenCore.Document, Bool) -> ()) -> some View {
         modifier(WindowOverlays(overlay: overlay, commands: commands, open: open))
     }
 }
@@ -45,7 +45,7 @@ extension View {
 private struct WindowOverlays: ViewModifier {
     @Binding var overlay: WindowOverlay?
     let commands: [PaletteCommand]
-    let open: (DotMDCore.Document, Bool) -> ()
+    let open: (DotPenCore.Document, Bool) -> ()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
@@ -80,7 +80,7 @@ private struct WindowOverlays: ViewModifier {
 /// The prototype's `.pal`: recent files first, then the reader's headings and commands. Type to search all three.
 struct CommandPalette: View {
     let windowCommands: [PaletteCommand]
-    let open: (DotMDCore.Document, Bool) -> ()
+    let open: (DotPenCore.Document, Bool) -> ()
     let close: () -> ()
 
     @Environment(Library.self) private var library
@@ -94,7 +94,7 @@ struct CommandPalette: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private enum Row: Identifiable {
-        case file(DotMDCore.Document)
+        case file(DotPenCore.Document)
         case heading(DocumentHeading)
         case command(PaletteCommand)
 
@@ -314,7 +314,7 @@ struct CommandPalette: View {
     }
 
     /// The agent's badge when its log says it wrote the file, else the file's kind.
-    @ViewBuilder private func fileIcon(_ document: DotMDCore.Document) -> some View {
+    @ViewBuilder private func fileIcon(_ document: DotPenCore.Document) -> some View {
         if let url = library.url(for: document), let agent = activity.writer(for: url)?.agent {
             Text(agent == .claudeCode ? "CC" : "CX")
                 .font(.system(size: 7.5, weight: .bold, design: .monospaced))

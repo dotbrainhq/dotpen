@@ -1,6 +1,6 @@
 import AppKit
-import DotMDBridge
-import DotMDCore
+import DotPenBridge
+import DotPenCore
 import SwiftUI
 
 /// Settings, drawn like the prototype's `.settings`: a bar with the window buttons and the tabs, the selected pane,

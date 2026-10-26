@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 
 /// An editor dotPen can hand a file to.
 struct ExternalEditor: Identifiable {

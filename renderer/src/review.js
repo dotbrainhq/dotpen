@@ -35,7 +35,7 @@ export function showChangeBar(d, change, { canSendBack, onAccept, onSendBack, on
   hideChangeBar(d);
   const bar = d.createElement('div');
   bar.className = 'chgbar';
-  bar.setAttribute('data-dotmd-ui', '');
+  bar.setAttribute('data-dotpen-ui', '');
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', `Change ${change.index} of ${change.total}`);
   const count = d.createElement('span');

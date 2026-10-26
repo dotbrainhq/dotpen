@@ -16,7 +16,7 @@ import { copyHTML } from './copy.js';
 import { changeLines, changeAt, showChangeBar, hideChangeBar } from './review.js';
 
 const root = document.documentElement;
-const post = (message) => window.webkit?.messageHandlers?.dotmd?.postMessage(message);
+const post = (message) => window.webkit?.messageHandlers?.dotpen?.postMessage(message);
 const sanitize = createSanitizer(window);
 const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -107,7 +107,7 @@ function sendBackCurrent() {
   const block = blockAt(document.getElementById('doc'), current.at);
   if (!block) return;
   const copy = block.cloneNode(true);
-  copy.querySelectorAll('.del, .del-gap, .gut, [data-dotmd-ui]').forEach((el) => el.remove());
+  copy.querySelectorAll('.del, .del-gap, .gut, [data-dotpen-ui]').forEach((el) => el.remove());
   const text = copy.textContent.replace(/\s+/g, ' ').trim();
   const range = document.createRange();
   range.selectNodeContents(block);
@@ -282,7 +282,7 @@ function updateSelectionBar() {
 }
 
 document.addEventListener('mouseup', (event) => {
-  if (event.target.closest?.('[data-dotmd-ui]')) return;
+  if (event.target.closest?.('[data-dotpen-ui]')) return;
   // The selection settles after mouseup.
   setTimeout(updateSelectionBar, 0);
 });
@@ -372,7 +372,7 @@ async function renderDiagram(source, theme) {
     theme,
     fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
   });
-  const { svg } = await window.mermaid.render(`dotmd-diagram-${++diagramCount}`, source);
+  const { svg } = await window.mermaid.render(`dotpen-diagram-${++diagramCount}`, source);
   return svg;
 }
 
@@ -431,7 +431,7 @@ darkQuery.addEventListener('change', () => applyPictureTheme(document.getElement
 
 document.addEventListener('click', (event) => {
   // A click on a marked block makes it the change under review.
-  if (marks && !event.target.closest('a, button, [data-dotmd-ui]:not(.gut)')) {
+  if (marks && !event.target.closest('a, button, [data-dotpen-ui]:not(.gut)')) {
     const block = event.target.closest('#doc [data-line]');
     if (block && changeAt(marks.changes, Number(block.dataset.line))) setCurrent(Number(block.dataset.line));
   }
@@ -457,7 +457,7 @@ document.addEventListener('click', (event) => {
   post({ type: 'linkActivated', href });
 });
 
-window.DotMD = {
+window.dotPen = {
   async render({ markdown, options }) {
     lastRender = { markdown, options };
     applyOptions(options);
@@ -599,7 +599,7 @@ window.DotMD = {
   exportHTML() {
     const clone = document.getElementById('doc').cloneNode(true);
     removeMarks(clone);
-    clone.querySelectorAll('[data-dotmd-ui], button.copy').forEach((el) => el.remove());
+    clone.querySelectorAll('[data-dotpen-ui], button.copy').forEach((el) => el.remove());
     clone.querySelectorAll('.anch').forEach((el) => el.replaceWith(...el.childNodes));
     prepareTasks(clone, false);
     return clone.innerHTML;

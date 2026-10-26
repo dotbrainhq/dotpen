@@ -99,14 +99,14 @@ function apply(document, edit) {
   }
   const del = document.createElement('span');
   del.className = 'del';
-  del.setAttribute('data-dotmd-ui', '');
+  del.setAttribute('data-dotpen-ui', '');
   del.textContent = edit.text;
   range.setStart(edit.node, edit.start);
   range.collapse(true);
   // The space between the struck words and the next ones belongs to the mark, so it leaves with it.
   const space = document.createElement('span');
   space.className = 'del-gap';
-  space.setAttribute('data-dotmd-ui', '');
+  space.setAttribute('data-dotpen-ui', '');
   space.textContent = ' ';
   if (edit.before) {
     range.insertNode(space);
@@ -124,7 +124,7 @@ function addRemovalTag(doc, removal) {
   const tag = doc.ownerDocument.createElement('button');
   tag.type = 'button';
   tag.className = removal.afterLine > 0 ? 'gut rm' : 'gut rm top';
-  tag.setAttribute('data-dotmd-ui', '');
+  tag.setAttribute('data-dotpen-ui', '');
   tag.textContent = `−${n}`;
   tag.title = n === 1 ? '1 line removed. Click to show it.' : `${n} lines removed. Click to show them.`;
   tag.setAttribute('aria-label', n === 1 ? '1 line removed' : `${n} lines removed`);
@@ -143,7 +143,7 @@ function toggleRemoved(block, removal, tag) {
   }
   const shown = block.ownerDocument.createElement('div');
   shown.className = 'removed';
-  shown.setAttribute('data-dotmd-ui', '');
+  shown.setAttribute('data-dotpen-ui', '');
   shown.textContent = removal.text;
   block.after(shown);
   tag.setAttribute('aria-expanded', 'true');

@@ -32,7 +32,7 @@ export function copyHTML(doc, target, { diagramImages = new Map() } = {}) {
   });
 
   removeMarks(clone);
-  clone.querySelectorAll('[data-dotmd-ui], button.copy, .code-lang').forEach((el) => el.remove());
+  clone.querySelectorAll('[data-dotpen-ui], button.copy, .code-lang').forEach((el) => el.remove());
   clone.querySelectorAll('.anch').forEach((el) => el.replaceWith(...el.childNodes));
 
   for (const math of clone.querySelectorAll('.katex-display, .katex')) {

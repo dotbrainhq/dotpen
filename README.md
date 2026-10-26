@@ -54,7 +54,7 @@ brew install xcodegen
 git clone https://github.com/dotbrainhq/dotmd.git
 cd dotmd
 xcodegen generate
-xcodebuild -project DotMD.xcodeproj -scheme DotMD -configuration Debug -derivedDataPath build build
+xcodebuild -project dotPen.xcodeproj -scheme dotPen -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/dotPen.app
 ```
 
@@ -72,9 +72,9 @@ npm run build
 | Path | What it is |
 |---|---|
 | `App/` | The SwiftUI app: windows, toolbar, settings. |
-| `Packages/DotMDCore/` | Logic with no UI, like watching files. |
-| `Packages/DotMDRender/` | The document view, the bridge to the renderer, and export. |
-| `Packages/DotMDBridge/` | The agent bridge: a local MCP server that hands your comments to agents. |
+| `Packages/DotPenCore/` | Logic with no UI, like watching files. |
+| `Packages/DotPenRender/` | The document view, the bridge to the renderer, and export. |
+| `Packages/DotPenBridge/` | The agent bridge: a local MCP server that hands your comments to agents. |
 | `QuickLook/` | The Finder Quick Look extension. |
 | `cli/` | The `dotpen` command. |
 | `renderer/` | The Markdown renderer that runs inside the document view. |

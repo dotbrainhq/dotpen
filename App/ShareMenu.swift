@@ -1,5 +1,5 @@
 import AppKit
-import DotMDRender
+import DotPenRender
 import SwiftUI
 
 struct ShareMenu: View {

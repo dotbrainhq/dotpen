@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// A code folder and what first launch found in it.
@@ -42,9 +42,9 @@ struct FirstLaunchView: View {
         .background(Palette.window)
         #if DEBUG
         .task {
-            // `-DotMDFirstLaunchSearch <path>` skips the open panel, for prototype checks.
+            // `-DotPenFirstLaunchSearch <path>` skips the open panel, for prototype checks.
             let arguments = ProcessInfo.processInfo.arguments
-            guard search == nil, let index = arguments.firstIndex(of: "-DotMDFirstLaunchSearch"), index + 1 < arguments.count else { return }
+            guard search == nil, let index = arguments.firstIndex(of: "-DotPenFirstLaunchSearch"), index + 1 < arguments.count else { return }
             look(in: URL(fileURLWithPath: arguments[index + 1], isDirectory: true))
         }
         #endif

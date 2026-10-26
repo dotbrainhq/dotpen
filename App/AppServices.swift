@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 
 /// The objects every window shares with the menu bar item, Shortcuts actions, Services and the command line.
 @MainActor
@@ -20,7 +20,7 @@ enum AppServices {
         spotlight.update()
     }
 
-    /// Files open in a document window; folders get watched. `dotmd <path>`, Finder's Open in dotPen service, and
+    /// Files open in a document window; folders get watched. `dotpen <path>`, Finder's Open in dotPen service, and
     /// Spotlight's Open With all come through here.
     static func open(_ urls: [URL]) {
         for url in urls {
@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 /// Finder's Services menu: Open in dotPen for Markdown files and folders.
 final class ServicesProvider: NSObject {
-    @objc func openInDotMD(_ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
+    @objc func openInDotPen(_ pasteboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
         let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         MainActor.assumeIsolated { AppServices.open(urls) }
     }

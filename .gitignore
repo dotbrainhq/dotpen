@@ -2,7 +2,7 @@
 build/
 .build/
 .swiftpm/
-DotMD.xcodeproj/
+dotPen.xcodeproj/
 DerivedData/
 node_modules/
 _trash/

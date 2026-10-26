@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const out = await mkdtemp(join(tmpdir(), 'dotmd-ack-'));
+const out = await mkdtemp(join(tmpdir(), 'dotpen-ack-'));
 const { metafile } = await build({
   entryPoints: { main: 'src/main.js', mermaid: 'src/mermaid-entry.js', styles: 'src/styles.css' },
   bundle: true,

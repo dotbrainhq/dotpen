@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The frame every outline row shares, the prototype's `.tr`: 28 points tall, indented 14 points per level,
@@ -135,7 +135,7 @@ struct DirectoryRow: View {
 }
 
 struct FileRow: View {
-    let document: DotMDCore.Document
+    let document: DotPenCore.Document
     let showTitles: Bool
     let depth: Int
     let selected: Bool
@@ -254,7 +254,7 @@ struct HiddenPathsNote: View {
     private func sentence(_ summary: String) -> AttributedString {
         var text = AttributedString(summary + " ")
         var link = AttributedString(library.showIgnored ? "Hide" : "Show")
-        link.link = URL(string: "dotmd-action:toggle-hidden-paths")
+        link.link = URL(string: "dotpen-action:toggle-hidden-paths")
         link.font = .system(size: 11.5, weight: .medium)
         link.foregroundColor = Palette.accentInk
         link.underlineStyle = nil

@@ -19,7 +19,7 @@ export function showNotice(d, notice, onAction) {
   const box = d.createElement('div');
   box.className = 'notice';
   box.setAttribute('role', 'status');
-  box.setAttribute('data-dotmd-ui', '');
+  box.setAttribute('data-dotpen-ui', '');
   box.innerHTML = `${icon(notice.icon)}<span><b>${escapeHtml(notice.title)}</b>${notice.text ? ` ${escapeHtml(notice.text)}` : ''}</span>`;
   for (const { id, label, quiet } of notice.buttons ?? []) {
     const button = d.createElement('button');

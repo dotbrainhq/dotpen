@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The prototype's Send sheet: the prompt dotPen builds from the comments, two switches, and Copy prompt or Send.

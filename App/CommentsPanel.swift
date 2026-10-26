@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The prototype's `.cpanel`: the file's comments, open or resolved, with Send and Copy as Prompt at the bottom.

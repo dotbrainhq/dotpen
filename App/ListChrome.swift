@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// "Folders" with the sort menu, above the outline. The prototype's `.side-head`.

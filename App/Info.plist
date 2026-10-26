@@ -11,7 +11,7 @@
                 <string>Open in dotPen</string>
             </dict>
             <key>NSMessage</key>
-            <string>openInDotMD</string>
+            <string>openInDotPen</string>
             <key>NSPortName</key>
             <string>dotPen</string>
             <key>NSRequiredContext</key>

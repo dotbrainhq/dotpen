@@ -1,8 +1,8 @@
 import AppKit
 import CryptoKit
-import DotMDBridge
-import DotMDCore
-import DotMDRender
+import DotPenBridge
+import DotPenCore
+import DotPenRender
 import SwiftUI
 
 struct ReaderScreen: View {
@@ -50,7 +50,7 @@ struct ReaderScreen: View {
     /// The file went away: the reader keeps its last version, faded, under a notice.
     @State private var fileGone = false
     /// The library's record of the file, kept so the title bar still names it after the file goes.
-    @State private var lastLibraryDocument: DotMDCore.Document?
+    @State private var lastLibraryDocument: DotPenCore.Document?
     /// When the reader last read the file from disk, for the deleted-file notice.
     @State private var readFromDiskAt = Date.now
     /// Show All on the large-file notice.
@@ -546,11 +546,11 @@ struct ReaderScreen: View {
         }
     }
 
-    private var libraryDocument: DotMDCore.Document? {
+    private var libraryDocument: DotPenCore.Document? {
         documentKey.flatMap { library.document(key: $0) }
     }
 
-    private var shownDocument: DotMDCore.Document? {
+    private var shownDocument: DotPenCore.Document? {
         libraryDocument ?? (fileGone ? lastLibraryDocument : nil)
     }
 

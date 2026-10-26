@@ -1,7 +1,7 @@
 const EXTERNAL = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
 
 /**
- * Maps a relative image path to the dotmd-asset scheme, which the app serves from disk.
+ * Maps a relative image path to the dotpen-asset scheme, which the app serves from disk.
  * The whole path is one encoded segment so "../" survives URL parsing. A leading slash means
  * the watched folder's root, as it does on GitHub.
  */
@@ -14,10 +14,10 @@ export function localImageURL(src) {
     // Keep a path with a stray % as written.
   }
   const host = path.startsWith('/') ? 'root' : 'doc';
-  return `dotmd-asset://${host}/${encodeURIComponent(path.replace(/^\/+/, ''))}`;
+  return `dotpen-asset://${host}/${encodeURIComponent(path.replace(/^\/+/, ''))}`;
 }
 
-/** Points every relative img src and source srcset at the dotmd-asset scheme. */
+/** Points every relative img src and source srcset at the dotpen-asset scheme. */
 export function rewriteLocalImages(doc) {
   for (const img of doc.querySelectorAll('img[src]')) {
     const url = localImageURL(img.getAttribute('src'));

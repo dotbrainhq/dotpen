@@ -10,7 +10,7 @@ export function showChip(doc, { count, since }, { onNext, onMarkRead }) {
   const d = doc.ownerDocument;
   const chip = d.createElement('div');
   chip.className = 'chip';
-  chip.setAttribute('data-dotmd-ui', '');
+  chip.setAttribute('data-dotpen-ui', '');
   chip.setAttribute('role', 'group');
   chip.setAttribute('aria-label', 'Changes since you last read this file');
   const label = d.createElement('b');

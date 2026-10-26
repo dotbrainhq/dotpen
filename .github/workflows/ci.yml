@@ -38,20 +38,20 @@ jobs:
         run: |
           sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
           xcodebuild -version
-      - name: Test DotMDCore
-        working-directory: Packages/DotMDCore
+      - name: Test DotPenCore
+        working-directory: Packages/DotPenCore
         run: swift test
-      - name: Test DotMDRender
-        working-directory: Packages/DotMDRender
+      - name: Test DotPenRender
+        working-directory: Packages/DotPenRender
         run: swift test
-      - name: Test DotMDBridge
-        working-directory: Packages/DotMDBridge
+      - name: Test DotPenBridge
+        working-directory: Packages/DotPenBridge
         run: swift test
       - name: Build the app
         run: |
           brew install xcodegen
           xcodegen generate
-          xcodebuild -project DotMD.xcodeproj -scheme DotMD -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project dotPen.xcodeproj -scheme dotPen -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
 
   ci-passed:
     name: CI passed

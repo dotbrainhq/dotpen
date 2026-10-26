@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The prototype's sidebar colors, read by name from the asset catalog, which holds the light and dark values.

@@ -1,5 +1,5 @@
 import AppKit
-import DotMDRender
+import DotPenRender
 import QuickLookUI
 
 final class PreviewViewController: NSViewController {

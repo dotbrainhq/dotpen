@@ -1,5 +1,5 @@
 import AppIntents
-import DotMDCore
+import DotPenCore
 import Foundation
 
 /// A Markdown file in a watched folder, as Shortcuts shows and picks it.
@@ -17,7 +17,7 @@ struct MarkdownFileEntity: AppEntity {
     }
 
     @MainActor
-    init(_ document: DotMDCore.Document, folder: String) {
+    init(_ document: DotPenCore.Document, folder: String) {
         id = Int(document.key)
         title = document.title ?? (document.relativePath as NSString).lastPathComponent
         path = "\(folder)/\(document.relativePath)"
@@ -62,7 +62,7 @@ enum IntentError: Error, CustomLocalizedStringResourceConvertible {
 }
 
 @MainActor
-private func document(_ entity: MarkdownFileEntity) async throws -> (DotMDCore.Document, URL, String) {
+private func document(_ entity: MarkdownFileEntity) async throws -> (DotPenCore.Document, URL, String) {
     await AppServices.start()
     let library = AppServices.library
     guard let document = library.document(key: Int64(entity.id)), let url = library.url(for: document) else { throw IntentError.fileNotFound }
@@ -148,7 +148,7 @@ struct SendCommentsIntent: AppIntent {
     }
 }
 
-struct DotMDShortcuts: AppShortcutsProvider {
+struct DotPenShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: OpenFileIntent(), phrases: ["Open a file in \(.applicationName)"],
                     shortTitle: "Open File", systemImageName: "doc.text")

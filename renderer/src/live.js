@@ -23,7 +23,7 @@ export function setWriting(doc, writing, lastLine) {
   if (!block) return;
   const caret = doc.ownerDocument.createElement('span');
   caret.className = 'caret';
-  caret.setAttribute('data-dotmd-ui', '');
+  caret.setAttribute('data-dotpen-ui', '');
   caret.setAttribute('aria-hidden', 'true');
   (block.querySelector('li:last-child') ?? block).appendChild(caret);
 }

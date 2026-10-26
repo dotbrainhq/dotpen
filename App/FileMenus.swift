@@ -1,9 +1,9 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 struct FileMenu: View {
     @Environment(Library.self) private var library
-    let document: DotMDCore.Document
+    let document: DotPenCore.Document
 
     var body: some View {
         if let url = library.url(for: document) {

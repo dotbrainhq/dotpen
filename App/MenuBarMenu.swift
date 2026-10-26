@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 import Observation
 import SwiftUI
 
@@ -62,7 +62,7 @@ struct MenuBarMenu: View {
     }
 
     /// The five most recent files you haven't read since they arrived or changed.
-    private var newAndChanged: [DotMDCore.Document] {
+    private var newAndChanged: [DotPenCore.Document] {
         library.folders.flatMap(\.documents)
             .filter { $0.readState != .read }
             .sorted { $0.modifiedAt > $1.modifiedAt }
@@ -70,7 +70,7 @@ struct MenuBarMenu: View {
             .map(\.self)
     }
 
-    private func show(_ document: DotMDCore.Document) {
+    private func show(_ document: DotPenCore.Document) {
         navigator.requested = document.key
         openFiles()
     }

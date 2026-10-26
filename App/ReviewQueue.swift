@@ -1,6 +1,6 @@
 import AppKit
-import DotMDBridge
-import DotMDCore
+import DotPenBridge
+import DotPenCore
 import Observation
 
 /// Reviews agents ask for over the bridge: which files wait on the person, and the comments they leave when they're
@@ -63,7 +63,7 @@ final class ReviewQueue {
     }
 
     /// The path an agent passes: absolute, or relative to its repository, which is usually the watched folder.
-    private func document(matching path: String) -> DotMDCore.Document? {
+    private func document(matching path: String) -> DotPenCore.Document? {
         let wanted = path.hasPrefix("./") ? String(path.dropFirst(2)) : path
         if wanted.hasPrefix("/") { return library.document(at: URL(fileURLWithPath: wanted)) }
         let all = library.folders.flatMap(\.documents)

@@ -1,4 +1,4 @@
-import DotMDRender
+import DotPenRender
 import SwiftUI
 
 struct ReadingOptionsPopover: View {
