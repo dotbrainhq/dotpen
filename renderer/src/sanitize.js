@@ -40,7 +40,7 @@ export function createSanitizer(window) {
     FORBID_TAGS,
     ADD_TAGS: ['eq', 'eqn'],
     ADD_ATTR: ['align'],
-    // Style attributes could restyle DotMD, and GitHub drops background images too.
+    // Style attributes could restyle dotPen, and GitHub drops background images too.
     FORBID_ATTR: ['style', 'background'],
   });
 }

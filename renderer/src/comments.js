@@ -45,7 +45,7 @@ export function anchorPassage(block, quote, number) {
   }
   const badge = d.createElement('span');
   badge.className = 'num';
-  badge.setAttribute('data-dotmd-ui', '');
+  badge.setAttribute('data-dotpen-ui', '');
   badge.textContent = String(number);
   last.after(badge);
   return true;
@@ -74,7 +74,7 @@ export function renderComments(doc, margin, comments, author, { onEdit, onResolv
     anchorPassage(block, comment.quote, comment.number);
     const card = d.createElement('div');
     card.className = 'cmt saved';
-    card.setAttribute('data-dotmd-ui', '');
+    card.setAttribute('data-dotpen-ui', '');
     card.dataset.for = String(comment.line);
     card.dataset.comment = String(comment.id);
     card.appendChild(header(d, author, comment.when));
@@ -105,7 +105,7 @@ export function openComposer(doc, margin, { line, quote, body = '', id = null },
   const d = doc.ownerDocument;
   const card = d.createElement('div');
   card.className = 'cmt compose';
-  card.setAttribute('data-dotmd-ui', '');
+  card.setAttribute('data-dotpen-ui', '');
   card.dataset.for = String(line);
   card.appendChild(header(d, author, `on "${shortQuote(quote)}"`));
   const field = d.createElement('textarea');
@@ -125,14 +125,17 @@ export function openComposer(doc, margin, { line, quote, body = '', id = null },
   save.innerHTML = 'Comment<kbd>⌘↩</kbd>';
   row.append(cancel, save);
   card.appendChild(row);
+  // The composer pushed the cards below it down; they go back beside their passages when it closes.
   const submit = () => {
     const text = field.value.trim();
     if (!text) return;
     closeComposer(margin);
+    layoutCards(doc, margin);
     onSubmit({ line, quote, body: text, id });
   };
   const dismiss = () => {
     closeComposer(margin);
+    layoutCards(doc, margin);
     onCancel?.();
   };
   cancel.addEventListener('click', dismiss);

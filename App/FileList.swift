@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The watched folders as an outline, drawn to match the prototype rather than a stock sidebar list.
@@ -6,10 +6,10 @@ import SwiftUI
 struct FileList: View {
     @Environment(Library.self) private var library
     @Binding var selection: Int64?
+    @Binding var collapsed: Set<String>
     let sort: FileSortOrder
     let showTitles: Bool
     let filter: FileFilter
-    @State private var collapsed: Set<String> = []
     @State private var focusedRow: OutlineRowID?
     @FocusState private var listFocused: Bool
     /// The ring shows only after keyboard use, like the prototype's :focus-visible. A click hides it again.
@@ -54,6 +54,12 @@ struct FileList: View {
             }
             // The prototype shows no scroll bar, and a visible one would narrow every row.
             .scrollIndicators(.never)
+            // A file opened from elsewhere (J and K, the palette) comes into view, and the arrows go on from it.
+            .onChange(of: selection) { _, key in
+                guard let key, let row = visibleRows.first(where: { $0.id == .file(folder: $0.id.folderID, key: key) }) else { return }
+                focusedRow = row.id
+                proxy.scrollTo(row.id)
+            }
         }
         .onChange(of: listFocused) { _, focused in
             if focused { placeFocus() }

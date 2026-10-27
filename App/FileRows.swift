@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The frame every outline row shares, the prototype's `.tr`: 28 points tall, indented 14 points per level,
@@ -53,8 +53,8 @@ struct FolderRow: View {
     var body: some View {
         HStack(spacing: 6) {
             Twisty(isExpanded: isExpanded)
-            Icon(folder.accessLost ? "lock" : "folder", size: 16)
-                .foregroundStyle(folder.accessLost ? Palette.ink4 : folder.folder.color.color)
+            Icon("folder", size: 16)
+                .foregroundStyle(folder.folder.color.color)
             Text(folder.folder.name)
                 .font(.system(size: 12.5, weight: .semibold))
                 .lineLimit(1)
@@ -86,10 +86,14 @@ struct FolderRow: View {
                     .fixedSize()
                     .transition(.opacity)
             }
+            if folder.accessLost {
+                Icon("warn", size: 14)
+                    .foregroundStyle(Palette.warn)
+            }
         }
         .foregroundStyle(Palette.ink)
         .animation(.easeOut(duration: 0.15), value: folder.unreadCount > 0 && !folder.accessLost)
-        .help(folder.accessLost ? "DotMD lost access to this folder. Right-click to choose it again." : folder.folder.path)
+        .help(folder.accessLost ? "dotPen lost access to this folder. Right-click to choose it again." : folder.folder.path)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(folder.folder.name)
         .accessibilityValue(accessibilityValue)
@@ -131,7 +135,7 @@ struct DirectoryRow: View {
 }
 
 struct FileRow: View {
-    let document: DotMDCore.Document
+    let document: DotPenCore.Document
     let showTitles: Bool
     let depth: Int
     let selected: Bool
@@ -140,6 +144,8 @@ struct FileRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isWriting: Bool { library.writing.contains(document.key) }
+    /// An agent asked for the person's review of this file and is waiting.
+    private var awaitsReview: Bool { AppServices.reviews.pending(for: document.key) != nil }
 
     var body: some View {
         // The row frame goes on first so dragging and the menu work across the whole row, padding included.
@@ -182,7 +188,8 @@ struct FileRow: View {
         .accessibilityValue(accessibilityValue)
     }
 
-    /// The pencil while the file is being written wins over the unread dot.
+    /// The pencil while the file is being written wins, then an amber dot while an agent waits for review, then the
+    /// unread dot.
     @ViewBuilder private var badge: some View {
         if isWriting {
             Icon("pencil", size: 13)
@@ -190,6 +197,12 @@ struct FileRow: View {
                 .symbolEffect(.wiggle, options: .repeating.speed(0.5), isActive: !reduceMotion)
                 .frame(width: 16, height: 16)
                 .transition(.opacity)
+        } else if awaitsReview {
+            Circle()
+                .fill(Palette.warn)
+                .frame(width: 7, height: 7)
+                .help("An agent is waiting for your review")
+                .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
         } else if document.readState != .read {
             Circle()
                 .fill(Palette.accent)
@@ -198,13 +211,14 @@ struct FileRow: View {
         }
     }
 
-    /// Drives the badge animation: 0 read, 1 unread, 2 being written.
+    /// Drives the badge animation: 0 read, 1 unread, 2 being written, 3 waiting for review.
     private var badgeState: Int {
-        isWriting ? 2 : document.readState == .read ? 0 : 1
+        isWriting ? 2 : awaitsReview ? 3 : document.readState == .read ? 0 : 1
     }
 
     private var accessibilityValue: String {
         if isWriting { return "Being written" }
+        if awaitsReview { return "Waiting for your review" }
         switch document.readState {
         case .read: return ""
         case .new: return "New"
@@ -240,7 +254,7 @@ struct HiddenPathsNote: View {
     private func sentence(_ summary: String) -> AttributedString {
         var text = AttributedString(summary + " ")
         var link = AttributedString(library.showIgnored ? "Hide" : "Show")
-        link.link = URL(string: "dotmd-action:toggle-hidden-paths")
+        link.link = URL(string: "dotpen-action:toggle-hidden-paths")
         link.font = .system(size: 11.5, weight: .medium)
         link.foregroundColor = Palette.accentInk
         link.underlineStyle = nil

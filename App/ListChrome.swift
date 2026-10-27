@@ -1,4 +1,4 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// "Folders" with the sort menu, above the outline. The prototype's `.side-head`.
@@ -93,6 +93,7 @@ private struct FilterField: View {
                 .textFieldStyle(.plain)
                 .font(.system(size: 12))
                 .foregroundStyle(Palette.ink)
+                .accessibilityLabel("Filter files")
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, minHeight: 26, maxHeight: 26)
@@ -112,7 +113,7 @@ struct SidebarButtonStyle: ButtonStyle {
     }
 }
 
-/// A filter toggle: like the add button, and drawn in DotMD's green on the selection wash while on.
+/// A filter toggle: like the add button, and drawn in dotPen's green on the selection wash while on.
 struct FilterToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button {

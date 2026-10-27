@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The prototype's `.btn`: 30 points tall on a soft fill, or DotMD's green for the main action.
+/// The prototype's `.btn`: 30 points tall on a soft fill, or dotPen's green for the main action.
 struct FormButtonStyle: ButtonStyle {
     var primary = false
     /// The prototype shrinks the button inline in places: 26 points in Settings rows, 24 for Done.
@@ -52,6 +52,7 @@ struct SwitchToggleStyle: ToggleStyle {
 /// The prototype's `.sw`: a 28 by 16 point track with a 12 point knob.
 struct SwitchMark: View {
     let isOn: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Capsule()
@@ -63,7 +64,9 @@ struct SwitchMark: View {
                     .frame(width: 12, height: 12)
                     .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
                     .offset(x: isOn ? 14 : 2)
+                    // Reduce Motion: the knob jumps and only the color fades.
+                    .animation(reduceMotion ? nil : .timingCurve(0.2, 0.8, 0.2, 1, duration: 0.14), value: isOn)
             }
-            .animation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.14), value: isOn)
+            .animation(.easeOut(duration: reduceMotion ? 0.12 : 0.14), value: isOn)
     }
 }

@@ -2,7 +2,7 @@ const LABELS = { NOTE: 'Note', TIP: 'Tip', IMPORTANT: 'Important', WARNING: 'War
 
 // GitHub alerts: a blockquote whose first line is [!NOTE], [!TIP], [!IMPORTANT], [!WARNING] or [!CAUTION].
 export function alerts(md) {
-  md.core.ruler.after('block', 'dotmd_alerts', (state) => {
+  md.core.ruler.after('block', 'dotpen_alerts', (state) => {
     const tokens = state.tokens;
     for (let i = 0; i < tokens.length; i++) {
       if (tokens[i].type !== 'blockquote_open') continue;

@@ -1,11 +1,17 @@
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// Reads a library file and hands it to the reader. The file's folder is already open through its bookmark.
 struct LibraryReader: View {
     @Environment(Library.self) private var library
-    let document: DotMDCore.Document
+    let document: DotPenCore.Document
     let openDocument: (URL) -> ()
+    /// Close on the deleted-file notice: the Files window lets go of the file.
+    var close: () -> () = {}
+    /// J and K on the page.
+    var stepFile: (Int) -> () = { _ in }
+    var takesFocus = false
+    @Environment(\.filesChrome) private var filesChrome
     @State private var text: String?
     @State private var failed = false
     @State private var attempt = 0
@@ -13,10 +19,23 @@ struct LibraryReader: View {
     var body: some View {
         let url = library.url(for: document)
         Group {
-            if let text, let url {
-                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument)
+            if let folder = library.folders.first(where: { $0.id == document.folderID }), folder.accessLost {
+                VStack(spacing: 0) {
+                    if let filesChrome {
+                        TopBar(chrome: filesChrome, title: document.title ?? document.relativePath, path: folder.folder.name + "/" + document.relativePath) {
+                            EmptyView()
+                        }
+                    }
+                    AccessLostView(folder: folder)
+                }
+            } else if let text, let url {
+                ReaderScreen(text: text, fileURL: url, onOpenDocument: openDocument, onClose: close, onStepFile: stepFile, takesFocus: takesFocus)
             } else if failed {
-                ContentUnavailableView("DotMD couldn't open this file", systemImage: "doc.questionmark", description: Text(document.relativePath))
+                ContentUnavailableView(
+                    "This file won't open",
+                    systemImage: "doc.questionmark",
+                    description: Text("dotPen couldn't read \(document.relativePath). It tries again as soon as the file changes.")
+                )
             } else {
                 Color.clear
             }

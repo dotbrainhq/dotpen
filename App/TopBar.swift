@@ -5,6 +5,10 @@ import SwiftUI
 struct FilesChrome {
     let sidebarVisible: Bool
     let toggleSidebar: () -> ()
+    /// Shows a sheet over the whole window, as the prototype's Send sheet is, or takes it away when nil.
+    let showSheet: (AnyView?) -> ()
+    /// Shows the palette or the keyboard shortcuts over the whole window.
+    let showOverlay: (WindowOverlay) -> ()
 }
 
 extension EnvironmentValues {
@@ -118,27 +122,49 @@ struct ShadowOne<S: Shape>: ViewModifier {
 }
 
 /// A button inside a cap: 26 points tall, at least 30 wide, 9 points of side padding, ink-2, and a fill under the pointer.
+/// The prototype's `.cap.send` button keeps its green on hover and is semibold.
 struct CapButtonStyle: ButtonStyle {
+    var tint: Color?
+    var weight: Font.Weight = .medium
+
     func makeBody(configuration: Configuration) -> some View {
-        CapButtonBody(label: configuration.label, pressed: configuration.isPressed)
+        CapButtonBody(label: configuration.label, pressed: configuration.isPressed, tint: tint, weight: weight)
     }
 }
 
 private struct CapButtonBody<Label: View>: View {
     let label: Label
     let pressed: Bool
+    let tint: Color?
+    let weight: Font.Weight
+    @Environment(\.isEnabled) private var isEnabled
     @State private var hovering = false
 
     var body: some View {
         label
-            .font(.system(size: 12.5, weight: .medium))
-            .foregroundStyle(hovering ? Palette.ink : Palette.ink2)
+            .font(.system(size: 12.5, weight: isEnabled ? weight : .medium))
+            // Disabled, the prototype's send button goes ink-4 and stops reacting to the pointer.
+            .foregroundStyle(!isEnabled ? Palette.ink4 : tint ?? (hovering ? Palette.ink : Palette.ink2))
             .padding(.horizontal, 9)
             .frame(minWidth: 30, minHeight: 26, maxHeight: 26)
-            .background(hovering ? Palette.fill : .clear, in: Capsule())
+            .background(hovering && isEnabled ? Palette.fill : .clear, in: Capsule())
             .contentShape(Capsule())
             .opacity(pressed ? 0.7 : 1)
             .onHover { hovering = $0 }
             .animation(.easeOut(duration: 0.14), value: hovering)
+    }
+}
+
+/// The prototype's `.count`: how many comments the next Send carries, on dotPen's green.
+struct CountBadge: View {
+    let count: Int
+
+    var body: some View {
+        Text("\(count)")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Palette.onAccent)
+            .padding(.horizontal, 5)
+            .frame(minWidth: 17, minHeight: 17)
+            .background(Palette.accent, in: Capsule())
     }
 }

@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Opens every reader window as a tab in an open DotMD window, whatever the system tab setting is.
+/// Opens every reader window as a tab in an open dotPen window, whatever the system tab setting is.
 struct WindowTabbing: NSViewRepresentable {
     func makeNSView(context: Context) -> TabbingView { TabbingView() }
     func updateNSView(_ nsView: TabbingView, context: Context) {}

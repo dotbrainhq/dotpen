@@ -10,7 +10,7 @@ export function showChip(doc, { count, since }, { onNext, onMarkRead }) {
   const d = doc.ownerDocument;
   const chip = d.createElement('div');
   chip.className = 'chip';
-  chip.setAttribute('data-dotmd-ui', '');
+  chip.setAttribute('data-dotpen-ui', '');
   chip.setAttribute('role', 'group');
   chip.setAttribute('aria-label', 'Changes since you last read this file');
   const label = d.createElement('b');
@@ -41,6 +41,12 @@ export function showChip(doc, { count, since }, { onNext, onMarkRead }) {
 export function nextChangeLine(lines, viewTop, topOf) {
   const sorted = [...lines].sort((a, b) => a - b);
   return sorted.find((line) => topOf(line) > viewTop + 4) ?? sorted[0];
+}
+
+/** The change above the one at the top of the view, wrapping to the last: Shift-N. */
+export function previousChangeLine(lines, viewTop, topOf) {
+  const sorted = [...lines].sort((a, b) => a - b);
+  return sorted.findLast((line) => topOf(line) < viewTop - 4) ?? sorted.at(-1);
 }
 
 /**

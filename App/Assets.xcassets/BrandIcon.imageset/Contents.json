@@ -1,6 +1,6 @@
 {
   "images" : [
-    { "filename" : "dotmd-icon-256.png", "idiom" : "universal" }
+    { "filename" : "dotpen-icon-256.png", "idiom" : "universal" }
   ],
   "info" : { "author" : "xcode", "version" : 1 }
 }

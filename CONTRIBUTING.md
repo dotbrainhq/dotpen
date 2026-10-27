@@ -13,12 +13,12 @@ Every change follows the same path, even a one-word fix.
 Run these before opening a pull request:
 
 ```
-(cd Packages/DotMDCore && swift test)
-(cd Packages/DotMDRender && swift test)
+(cd Packages/DotPenCore && swift test)
+(cd Packages/DotPenRender && swift test)
 xcodegen generate
-xcodebuild -project DotMD.xcodeproj -scheme DotMD -configuration Debug -derivedDataPath build build
+xcodebuild -project dotPen.xcodeproj -scheme dotPen -configuration Debug -derivedDataPath build build
 ```
 
-If you changed the renderer, also run `npm test` and `npm run build` in `renderer/`, and commit the built files in `Packages/DotMDRender/Sources/DotMDRender/Resources/renderer/`.
+If you changed the renderer, also run `npm test` and `npm run build` in `renderer/`, and commit the built files in `Packages/DotPenRender/Sources/DotPenRender/Resources/renderer/`.
 
 For anything you can see, check it in light and dark mode, with Reduce Motion on, and open `fixtures/sample.md` to make sure nothing else changed.

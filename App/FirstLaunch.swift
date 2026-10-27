@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// A code folder and what first launch found in it.
@@ -42,9 +42,9 @@ struct FirstLaunchView: View {
         .background(Palette.window)
         #if DEBUG
         .task {
-            // `-DotMDFirstLaunchSearch <path>` skips the open panel, for prototype checks.
+            // `-DotPenFirstLaunchSearch <path>` skips the open panel, for prototype checks.
             let arguments = ProcessInfo.processInfo.arguments
-            guard search == nil, let index = arguments.firstIndex(of: "-DotMDFirstLaunchSearch"), index + 1 < arguments.count else { return }
+            guard search == nil, let index = arguments.firstIndex(of: "-DotPenFirstLaunchSearch"), index + 1 < arguments.count else { return }
             look(in: URL(fileURLWithPath: arguments[index + 1], isDirectory: true))
         }
         #endif
@@ -94,7 +94,7 @@ struct FirstLaunchView: View {
     }
 
     private var eyebrow: String {
-        guard let search else { return "Welcome to DotMD" }
+        guard let search else { return "Welcome to dotPen" }
         let count = search.suggestedCount
         if count == 1 { return "Found 1 folder where agents write" }
         if count > 1 { return "Found \(count) folders where agents write" }
@@ -107,21 +107,21 @@ struct FirstLaunchView: View {
 
     private var heading: String {
         guard let search else { return "Watch where your agents write" }
-        return search.candidates.isEmpty ? "Nothing found in \(search.codeFolder.lastPathComponent)" : "Pick what DotMD should watch"
+        return search.candidates.isEmpty ? "Nothing found in \(search.codeFolder.lastPathComponent)" : "Pick what dotPen should watch"
     }
 
     private var explanation: Text {
         guard let search else {
-            return Text("Choose your code folder, like ~/code. DotMD finds the projects inside it by their CLAUDE.md, AGENTS.md and .cursor files. Nothing leaves your Mac.")
+            return Text("Choose your code folder, like ~/code. dotPen finds the projects inside it by their CLAUDE.md, AGENTS.md and .cursor files. Nothing leaves your Mac.")
         }
         let folder = Text(RealHome.abbreviate(search.codeFolder)).bold()
         if search.candidates.isEmpty {
-            return Text("In \(folder), DotMD found no CLAUDE.md, AGENTS.md or .cursor files, and no folder with lots of Markdown. Watch the whole folder, choose another, or open a single file.")
+            return Text("In \(folder), dotPen found no CLAUDE.md, AGENTS.md or .cursor files, and no folder with lots of Markdown. Watch the whole folder, choose another, or open a single file.")
         }
         if search.suggestedCount == 0 {
-            return Text("In \(folder), the folder you chose, DotMD found no CLAUDE.md, AGENTS.md or .cursor files, but these folders hold lots of Markdown. Nothing leaves your Mac.")
+            return Text("In \(folder), the folder you chose, dotPen found no CLAUDE.md, AGENTS.md or .cursor files, but these folders hold lots of Markdown. Nothing leaves your Mac.")
         }
-        return Text("In \(folder), the folder you chose, DotMD found these agent folders by their CLAUDE.md, AGENTS.md and .cursor files. Nothing leaves your Mac.")
+        return Text("In \(folder), the folder you chose, dotPen found these agent folders by their CLAUDE.md, AGENTS.md and .cursor files. Nothing leaves your Mac.")
     }
 
     private var actions: some View {
@@ -185,7 +185,7 @@ struct FirstLaunchView: View {
             isAdding = false
             if let failure {
                 let alert = NSAlert()
-                alert.messageText = "DotMD couldn't watch every folder"
+                alert.messageText = "dotPen couldn't watch every folder"
                 alert.informativeText = failure.localizedDescription
                 alert.runModal()
             }

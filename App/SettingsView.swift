@@ -1,24 +1,27 @@
 import AppKit
-import DotMDCore
+import DotPenBridge
+import DotPenCore
 import SwiftUI
 
 /// Settings, drawn like the prototype's `.settings`: a bar with the window buttons and the tabs, the selected pane,
 /// then the About footer. The prototype's Done button is left out: Mac settings windows close with the close button. Only the panes whose features exist are listed; the rest join as they ship.
 struct SettingsView: View {
     enum Pane: String, CaseIterable, Identifiable {
-        case folders
+        case folders, integrations
 
         var id: String { rawValue }
 
         var title: String {
             switch self {
             case .folders: "Folders"
+            case .integrations: "Integrations"
             }
         }
 
         var icon: String {
             switch self {
             case .folders: "folders"
+            case .integrations: "plug"
             }
         }
     }
@@ -32,6 +35,7 @@ struct SettingsView: View {
             bar
             switch pane {
             case .folders: FoldersSettings()
+            case .integrations: IntegrationsSettings()
             }
             AboutFooter()
         }
@@ -121,7 +125,7 @@ private struct FoldersSettings: View {
                     .toggleStyle(SwitchToggleStyle())
             }
             SettingsDivider()
-            SettingsRow(title: "Watch another folder", detail: "DotMD lists every Markdown file inside it and watches it for changes.") {
+            SettingsRow(title: "Watch another folder", detail: "dotPen lists every Markdown file inside it and watches it for changes.") {
                 Button("Choose…", action: addFolder)
                     .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
             }
@@ -135,7 +139,7 @@ private struct FoldersSettings: View {
             Button("Stop Watching", role: .destructive) { library.removeFolder(folder.id) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in
-            Text("DotMD forgets which files you've read in it. Your files stay as they are.")
+            Text("dotPen forgets which files you've read in it. Your files stay as they are.")
         }
     }
 
@@ -149,18 +153,98 @@ private struct FoldersSettings: View {
     }
 
     private func addFolder() {
-        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
+        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. dotPen lists every Markdown file inside it.") else { return }
         FileActions.watch(url, in: library)
     }
 
     private func reconnect(_ folder: FolderState) {
         let path = URL(fileURLWithPath: folder.folder.path)
         guard let url = FolderPicker.chooseFolder(
-            message: "Choose \(folder.folder.name) again so DotMD can read it.",
+            message: "Choose \(folder.folder.name) again so dotPen can read it.",
             prompt: "Reconnect",
             startingAt: path.deletingLastPathComponent()
         ) else { return }
         Task { try? await library.reconnect(folder.id, to: url) }
+    }
+}
+
+/// The agent bridge's switch, then how each agent connects once it's on, then the agent logs dotPen may read.
+private struct IntegrationsSettings: View {
+    @Environment(AgentBridge.self) private var bridge
+    @Environment(AgentActivity.self) private var activity
+    @Environment(SpotlightIndex.self) private var spotlight
+
+    /// Writes cli/dotpen to /usr/local/bin. The person runs it; a sandboxed app can't install a command.
+    static let installCommand = #"printf '%s\n' '#!/bin/sh' '[ "$#" -eq 0 ] && set -- .' 'exec open -b app.dotpen.dotPen "$@"' | sudo tee /usr/local/bin/dotpen > /dev/null && sudo chmod +x /usr/local/bin/dotpen"#
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SettingsRow(title: "Spotlight", detail: "Find headings and text from watched files in Spotlight.") {
+                Toggle("Spotlight", isOn: Binding(get: { spotlight.isEnabled }, set: { spotlight.setEnabled($0) }))
+                    .toggleStyle(SwitchToggleStyle())
+            }
+            SettingsDivider()
+            SettingsRow(title: "Shortcuts", detail: "Actions: Open file, Get changes since last read, List open tasks, Send comments to agent.") {
+                Button("Open Shortcuts") {
+                    if let url = URL(string: "shortcuts://") { NSWorkspace.shared.open(url) }
+                }
+                .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+            }
+            SettingsDivider()
+            SettingsRow(title: "Command line", detail: "Run the copied command once in Terminal. Then try dotpen plan.md.") {
+                Button("Copy Command") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(Self.installCommand, forType: .string)
+                }
+                .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                .accessibilityLabel("Copy the command line install command")
+            }
+            SettingsDivider()
+            SettingsRow(title: "Agent bridge", detail: "An MCP server so your agents can read your comments and resolve them.") {
+                Toggle("Agent bridge", isOn: Binding(get: { bridge.isEnabled }, set: { bridge.setEnabled($0) }))
+                    .toggleStyle(SwitchToggleStyle())
+            }
+            switch bridge.state {
+            case .running, .starting:
+                // Each agent adds the bridge its own way, and people use different ones.
+                ForEach(bridge.connections) { connection in
+                    SettingsDivider()
+                    SettingsRow(title: connection.agent, detail: connection.detail) {
+                        Button(connection.button) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(connection.text, forType: .string)
+                        }
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                        .accessibilityLabel("\(connection.button) for \(connection.agent)")
+                    }
+                }
+            case let .failed(message):
+                SettingsDivider()
+                SettingsRow(title: "The bridge couldn't start", detail: message) {
+                    Button("Try Again") { bridge.start() }
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                }
+            case .off:
+                EmptyView()
+            }
+            // Reading an agent's logs is how dotPen names who wrote a file and follows a file while it's written.
+            ForEach(Agent.allCases, id: \.self) { agent in
+                SettingsDivider()
+                SettingsRow(title: "\(agent.name) sessions",
+                            detail: "Name \(agent.name) on the files it writes. Reads \(AgentActivity.logFolderName(for: agent)) on this Mac.") {
+                    if activity.granted.contains(agent) {
+                        Button("Stop Reading") { activity.revokeAccess(to: agent) }
+                            .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                            .accessibilityLabel("Stop reading \(agent.name) sessions")
+                    } else {
+                        Button("Allow Access…") { activity.grantAccess(to: agent) }
+                            .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                            .accessibilityLabel("Allow access to \(agent.name) sessions")
+                    }
+                }
+            }
+        }
+        .padding(EdgeInsets(top: 18, leading: 26, bottom: 22, trailing: 26))
     }
 }
 
@@ -173,17 +257,21 @@ private struct WatchedFolderRow: View {
     var body: some View {
         SettingsRow(title: folder.folder.name, detail: detail) {
             if folder.accessLost {
-                Button("Reconnect…", action: reconnect)
-                    .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                HStack(spacing: 10) {
+                    Icon("warn", size: 14)
+                        .foregroundStyle(Palette.warn)
+                    Button("Reconnect…", action: reconnect)
+                        .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
+                }
             } else {
                 Button("Remove", action: remove)
                     .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
                     .accessibilityLabel("Stop watching \(folder.folder.name)")
             }
         } leading: {
-            // The same mark as the folder's row in the list.
-            Icon(folder.accessLost ? "lock" : "folder", size: 16)
-                .foregroundStyle(folder.accessLost ? Palette.ink4 : folder.folder.color.color)
+            // The same marks as the folder's row in the list: its own color, and the amber warning when lost.
+            Icon("folder", size: 16)
+                .foregroundStyle(folder.folder.color.color)
         }
     }
 
@@ -257,7 +345,7 @@ private struct AboutFooter: View {
                 .frame(width: 40, height: 40)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text("DotMD \(version)")
+                Text("dotPen \(version)")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Palette.ink)
                 Text("Read what your agents write. Open source, nothing leaves your Mac.")
@@ -266,7 +354,7 @@ private struct AboutFooter: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("View on GitHub") {
-                if let url = URL(string: "https://github.com/dotbrainhq/dotmd") { NSWorkspace.shared.open(url) }
+                if let url = URL(string: "https://github.com/dotbrainhq/dotpen") { NSWorkspace.shared.open(url) }
             }
             .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
         }
@@ -278,7 +366,7 @@ private struct AboutFooter: View {
     }
 }
 
-/// DotMD > Settings… (⌘,) opens the Settings window above.
+/// dotPen > Settings… (⌘,) opens the Settings window above.
 struct SettingsCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 

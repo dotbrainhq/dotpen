@@ -1,7 +1,7 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 
-/// An editor DotMD can hand a file to.
+/// An editor dotPen can hand a file to.
 struct ExternalEditor: Identifiable {
     let name: String
     let url: URL
@@ -45,7 +45,7 @@ enum FileActions {
                 try await library.addFolder(url)
             } catch {
                 let alert = NSAlert()
-                alert.messageText = "DotMD couldn't watch this folder"
+                alert.messageText = "dotPen couldn't watch this folder"
                 alert.informativeText = error.localizedDescription
                 alert.runModal()
             }

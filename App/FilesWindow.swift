@@ -1,5 +1,5 @@
 import AppKit
-import DotMDCore
+import DotPenCore
 import SwiftUI
 
 /// The Files layout: watched folders on the left, the selected document on the right.
@@ -9,12 +9,24 @@ import SwiftUI
 /// buttons in a title bar above it.
 struct FilesWindow: View {
     @Environment(Library.self) private var library
+    @Environment(FilesNavigator.self) private var navigator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selection: Int64?
     @SceneStorage("filesSidebarVisible") private var sidebarVisible = true
     @AppStorage("fileSort") private var sort = FileSortOrder.lastChanged
     @AppStorage("showTitles") private var showTitles = false
     @State private var filter = FileFilter()
+    /// Folders closed in the list, kept here so J and K skip the files inside them.
+    @State private var collapsed: Set<String> = []
+    /// The file J or K last moved to. Its reader takes the keyboard, so J and K keep working.
+    @State private var stepped: Int64?
+    /// The Send sheet, over the whole window with the scrim behind it.
+    @State private var sheet: AnyView?
+    /// The palette or the shortcuts, over the whole window.
+    @State private var overlay: WindowOverlay?
+    /// The last file shown. When it's moved or deleted its row goes, but the reader keeps its last version up,
+    /// under the prototype's notice, until the person closes it.
+    @State private var lastDocument: DotPenCore.Document?
 
     /// The prototype's sidebar column.
     static let sidebarWidth: CGFloat = 272
@@ -35,6 +47,20 @@ struct FilesWindow: View {
                 }
             }
         }
+        .overlay(alignment: .top) {
+            if let sheet {
+                ZStack(alignment: .top) {
+                    Palette.scrim
+                        .contentShape(Rectangle())
+                        .onTapGesture { showSheet(nil) }
+                        .transition(.opacity)
+                    // Hangs from the bottom of the 52 point bar, as the prototype's sheet does.
+                    sheet
+                        .padding(.top, 52)
+                        .transition(reduceMotion ? .opacity : .offset(y: -16).combined(with: .opacity))
+                }
+            }
+        }
         .background(Palette.window)
         .ignoresSafeArea()
         .background {
@@ -43,7 +69,21 @@ struct FilesWindow: View {
             WindowButtons(closeCenter: sidebarVisible && !isFirstLaunch ? CGPoint(x: 30, y: 30) : CGPoint(x: 22, y: 26))
         }
         .environment(\.filesChrome, chrome)
+        .onChange(of: navigator.requested, initial: true) { _, requested in
+            // The menu bar item asked for a file.
+            guard let requested else { return }
+            selection = requested
+            navigator.requested = nil
+        }
+        .windowOverlays($overlay, commands: windowCommands) { document, newWindow in
+            if newWindow, let url = library.url(for: document) {
+                FileActions.openInNewWindow(url)
+            } else {
+                selection = document.key
+            }
+        }
         .focusedSceneValue(\.toggleFiles, toggleFiles)
+        .focusedSceneValue(\.showOverlay) { overlay = $0 }
         .frame(minWidth: 760, minHeight: 480)
     }
 
@@ -54,7 +94,7 @@ struct FilesWindow: View {
     }
 
     private var chrome: FilesChrome {
-        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles)
+        FilesChrome(sidebarVisible: sidebarVisible, toggleSidebar: toggleFiles, showSheet: showSheet) { overlay = $0 }
     }
 
     /// The prototype's `.side-in`: a rounded panel 8 points in from the window's top, left and bottom, padded
@@ -68,7 +108,7 @@ struct FilesWindow: View {
                 .contentShape(Rectangle())
                 .gesture(WindowDragGesture())
             ListHeader(sort: $sort, showTitles: $showTitles)
-            FileList(selection: $selection, sort: sort, showTitles: showTitles, filter: filter)
+            FileList(selection: $selection, collapsed: $collapsed, sort: sort, showTitles: showTitles, filter: filter)
                 .frame(maxHeight: .infinity)
             FilterBar(filter: $filter, addFolder: addFolder)
         }
@@ -82,25 +122,53 @@ struct FilesWindow: View {
         .padding(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 0))
     }
 
-    private var selectedDocument: DotMDCore.Document? {
+    /// J and K: the next or previous file as the list shows it. At either end nothing moves.
+    private func stepFile(_ offset: Int) {
+        let rows = Outline.rows(for: library.folders, sort: sort, filter: filter, showTitles: showTitles, collapsed: collapsed)
+        guard let next = Outline.file(after: selection, by: offset, in: rows) else {
+            NSSound.beep()
+            return
+        }
+        stepped = next
+        selection = next
+    }
+
+    private var selectedDocument: DotPenCore.Document? {
         guard let selection else { return nil }
         return library.folders.lazy.flatMap(\.documents).first { $0.key == selection }
     }
 
     @ViewBuilder private var detail: some View {
-        if let document = selectedDocument {
-            LibraryReader(document: document, openDocument: openDocument)
+        if let document = selectedDocument ?? (lastDocument?.key == selection ? lastDocument : nil) {
+            LibraryReader(document: document, openDocument: openDocument, close: { selection = nil }, stepFile: stepFile,
+                          takesFocus: stepped == document.key)
                 .id(document.key)
+                .onChange(of: selectedDocument, initial: true) { _, current in
+                    if let current { lastDocument = current }
+                }
         } else {
             VStack(spacing: 0) {
                 TopBar(chrome: chrome, title: "", path: "") {
                     EmptyView()
                 }
-                ContentUnavailableView("Choose a file", systemImage: "doc.text", description: Text("Pick a Markdown file from the list."))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if isEveryFolderEmpty {
+                    EmptyFoldersView(folders: library.folders)
+                } else {
+                    ContentUnavailableView("Nothing open yet", systemImage: "doc.text", description: Text("Pick a file from the list, or press ⌘K to find one."))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            .navigationTitle("DotMD")
+            .navigationTitle("dotPen")
         }
+    }
+
+    /// Every watched folder is read and holds no Markdown: the prototype's empty state, not "Choose a file".
+    private var isEveryFolderEmpty: Bool {
+        !library.folders.isEmpty && library.folders.allSatisfy { $0.status == .ready && !$0.accessLost && $0.documents.isEmpty }
+    }
+
+    private func showSheet(_ view: AnyView?) {
+        sheet = view
     }
 
     private func toggleFiles() {
@@ -118,8 +186,16 @@ struct FilesWindow: View {
         }
     }
 
+    /// The palette's commands that belong to this window.
+    private var windowCommands: [PaletteCommand] {
+        [
+            PaletteCommand(title: sidebarVisible ? "Hide file list" : "Show file list", shortcut: "⌥⌘S", action: toggleFiles),
+            PaletteCommand(title: "Watch a folder…", action: addFolder),
+        ]
+    }
+
     private func addFolder() {
-        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. DotMD lists every Markdown file inside it.") else { return }
+        guard let url = FolderPicker.chooseFolder(message: "Choose a folder to watch. dotPen lists every Markdown file inside it.") else { return }
         FileActions.watch(url, in: library)
     }
 }

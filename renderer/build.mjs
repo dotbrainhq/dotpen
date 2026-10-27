@@ -2,7 +2,7 @@ import { build } from 'esbuild';
 import { copyFile, readFile, writeFile, readdir, rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const out = '../Packages/DotMDRender/Sources/DotMDRender/Resources/renderer';
+const out = '../Packages/DotPenRender/Sources/DotPenRender/Resources/renderer';
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 

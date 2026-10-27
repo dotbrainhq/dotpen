@@ -1,4 +1,4 @@
-import DotMDRender
+import DotPenRender
 import SwiftUI
 
 struct ReadingOptionsPopover: View {
@@ -37,6 +37,8 @@ struct ReadingOptionsPopover: View {
         }
         .padding(14)
         .frame(width: 300)
+        // The segmented width picker draws in the tint, which otherwise follows the system accent.
+        .tint(Palette.accent)
         .animation(reduceMotion ? .easeOut(duration: 0.12) : .spring(response: 0.35, dampingFraction: 0.85), value: options)
     }
 
@@ -51,7 +53,7 @@ struct ReadingOptionsPopover: View {
             HStack(spacing: 10) {
                 ForEach(sizes, id: \.self) { size in
                     Circle()
-                        .fill(size == options.size ? Color.accentColor : Color.secondary.opacity(0.35))
+                        .fill(size == options.size ? Palette.accent : Color.secondary.opacity(0.35))
                         .frame(width: 7, height: 7)
                         .scaleEffect(size == options.size ? 1.25 : 1)
                 }
@@ -85,12 +87,12 @@ struct ReadingOptionsPopover: View {
         return Button { options.font = font } label: {
             VStack(spacing: 2) {
                 Text("Ag").font(sample)
-                Text(name).font(.caption2).foregroundStyle(selected ? Color.accentColor : .secondary)
+                Text(name).font(.caption2).foregroundStyle(selected ? Palette.accent : .secondary)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(.quaternary.opacity(0.6), in: RoundedRectangle(cornerRadius: 9))
-            .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(selected ? Color.accentColor : .clear, lineWidth: 1.5))
+            .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(selected ? Palette.accent : .clear, lineWidth: 1.5))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
@@ -103,8 +105,8 @@ struct ReadingOptionsPopover: View {
                 Circle()
                     .fill(fill)
                     .frame(width: 30, height: 30)
-                    .overlay(Circle().strokeBorder(selected ? Color.accentColor : Color.secondary.opacity(0.3), lineWidth: selected ? 2 : 0.5))
-                Text(name).font(.caption2).foregroundStyle(selected ? Color.accentColor : .secondary)
+                    .overlay(Circle().strokeBorder(selected ? Palette.accent : Color.secondary.opacity(0.3), lineWidth: selected ? 2 : 0.5))
+                Text(name).font(.caption2).foregroundStyle(selected ? Palette.accent : .secondary)
             }
         }
         .buttonStyle(.plain)

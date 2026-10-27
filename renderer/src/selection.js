@@ -2,13 +2,13 @@ const BUBBLE = '<svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M
 
 /**
  * The passage a selection covers, whitespace collapsed, and the source line of the block it starts in.
- * Null for an empty selection, one outside the text, or one in DotMD's own controls.
+ * Null for an empty selection, one outside the text, or one in dotPen's own controls.
  */
 export function selectionInfo(doc, selection) {
   if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
   const range = selection.getRangeAt(0);
   const start = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
-  if (!start || !doc.contains(start) || start.closest('[data-dotmd-ui]')) return null;
+  if (!start || !doc.contains(start) || start.closest('[data-dotpen-ui]')) return null;
   const block = start.closest('[data-line]');
   if (!block || !doc.contains(block)) return null;
   const text = selection.toString().replace(/\s+/g, ' ').trim();
@@ -26,7 +26,7 @@ export function showSelectionBar(doc, rect, { canComment, onComment, onCopy, onP
   const win = d.defaultView;
   const bar = d.createElement('div');
   bar.className = 'selpop';
-  bar.setAttribute('data-dotmd-ui', '');
+  bar.setAttribute('data-dotpen-ui', '');
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', 'Selection');
   const button = (html, action) => {

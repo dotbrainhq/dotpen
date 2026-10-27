@@ -16,7 +16,7 @@ export function showMemory(doc, { line, label }) {
   if (!block || block === doc.lastElementChild) return null;
   const memory = doc.ownerDocument.createElement('div');
   memory.className = 'memory';
-  memory.setAttribute('data-dotmd-ui', '');
+  memory.setAttribute('data-dotpen-ui', '');
   memory.setAttribute('role', 'separator');
   memory.textContent = label;
   block.after(memory);
