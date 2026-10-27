@@ -20,6 +20,8 @@
             <array>
                 <string>public.folder</string>
                 <string>net.daringfireball.markdown</string>
+                <string>app.dotpen.mdx</string>
+                <string>app.dotpen.cursor-rule</string>
             </array>
         </dict>
     </array>
@@ -35,6 +37,8 @@
             <key>LSItemContentTypes</key>
             <array>
                 <string>net.daringfireball.markdown</string>
+                <string>app.dotpen.mdx</string>
+                <string>app.dotpen.cursor-rule</string>
             </array>
         </dict>
     </array>
@@ -56,6 +60,42 @@
                     <string>md</string>
                     <string>markdown</string>
                     <string>mdown</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>app.dotpen.mdx</string>
+            <key>UTTypeDescription</key>
+            <string>MDX document</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>net.daringfireball.markdown</string>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>mdx</string>
+                </array>
+            </dict>
+        </dict>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>app.dotpen.cursor-rule</string>
+            <key>UTTypeDescription</key>
+            <string>Cursor rule</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>net.daringfireball.markdown</string>
+                <string>public.plain-text</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>mdc</string>
                 </array>
             </dict>
         </dict>

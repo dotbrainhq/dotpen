@@ -12,7 +12,8 @@ public struct ScanResult: Sendable {
 
 /// Walks a folder for Markdown files.
 public enum FolderScanner {
-    public static let markdownExtensions: Set<String> = ["md", "markdown", "mdown"]
+    /// MDX is Markdown with components, and .mdc is Cursor's rule format: Markdown with front matter.
+    public static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mdx", "mdc"]
 
     public static func isMarkdown(_ url: URL) -> Bool {
         markdownExtensions.contains(url.pathExtension.lowercased())

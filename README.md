@@ -11,7 +11,7 @@ dotPen is a free, open-source, native Mac app. It's in early development, and th
 
 ## What it does
 
-- **Reads Markdown well:** GitHub Flavored Markdown, code with highlighting, Mermaid diagrams, math, front matter, alerts, and task lists, in New York, SF Pro, or SF Mono.
+- **Reads Markdown well:** GitHub Flavored Markdown, code with highlighting, Mermaid diagrams, math, front matter, alerts, and task lists, in New York, SF Pro, or SF Mono. MDX pages and Cursor's `.mdc` rules open too.
 - **Shows what agents wrote:** a list of your watched folders with unread files marked, and a live indicator while an agent is writing.
 - **Marks changes:** what changed since you last read a file, marked in the page like an editor marks a proof. No git needed.
 - **Sends comments back:** select text, comment, and send your notes to the agent as a prompt.

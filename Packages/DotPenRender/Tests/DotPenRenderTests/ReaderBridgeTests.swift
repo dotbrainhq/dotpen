@@ -37,6 +37,21 @@ import Testing
     #expect(options?["size"] == "medium")
 }
 
+@Test func renderCommandCarriesTheSourceFormat() throws {
+    let plain = ReaderCommand.render(markdown: "Text", options: ReadingOptions()).javaScript
+    #expect(plain.contains("\"format\":\"markdown\""))
+    let mdx = ReaderCommand.render(markdown: "Text", options: ReadingOptions(), format: .mdx).javaScript
+    #expect(mdx.contains("\"format\":\"mdx\""))
+}
+
+@Test func sourceFormatComesFromTheExtension() {
+    #expect(SourceFormat(url: URL(fileURLWithPath: "/docs/intro.mdx")) == .mdx)
+    #expect(SourceFormat(url: URL(fileURLWithPath: "/docs/INTRO.MDX")) == .mdx)
+    #expect(SourceFormat(url: URL(fileURLWithPath: "/.cursor/rules/style.mdc")) == .markdown)
+    #expect(SourceFormat(url: URL(fileURLWithPath: "/plan.md")) == .markdown)
+    #expect(SourceFormat(url: nil) == .markdown)
+}
+
 @Test func setReadingOptionsCommand() {
     let js = ReaderCommand.setReadingOptions(ReadingOptions(size: .small, font: .sans, width: .narrow, paper: .paper)).javaScript
     #expect(js.contains("window.dotPen.setReadingOptions("))

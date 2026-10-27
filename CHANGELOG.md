@@ -44,4 +44,5 @@ Every release of dotPen is listed here. Versions follow semantic versioning.
 - Show Source (⌘U) shows the file as written, with line numbers.
 - Review changes one at a time: N moves through them, A accepts one, and Send back turns it into a comment for the agent. Accepting never edits the file.
 - Agents can ask for your review and wait. The file gets an amber dot, the page shows the request, the Dock shows how many files are waiting, and Done Reviewing hands your comments to the agent.
+- MDX pages and Cursor's .mdc rule files are watched, opened and previewed in Quick Look like any Markdown file. In MDX, imports, exports, components and expressions show under their names as written, and none of it runs.
 - Increase Contrast strengthens faint text and lines, Reduce Motion stills the remaining motion, and VoiceOver can name the share menu and the filter field.
