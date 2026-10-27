@@ -354,7 +354,7 @@ private struct AboutFooter: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("View on GitHub") {
-                if let url = URL(string: "https://github.com/dotbrainhq/dotmd") { NSWorkspace.shared.open(url) }
+                if let url = URL(string: "https://github.com/dotbrainhq/dotpen") { NSWorkspace.shared.open(url) }
             }
             .buttonStyle(FormButtonStyle(height: 26, fontSize: 12))
         }

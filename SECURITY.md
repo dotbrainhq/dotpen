@@ -11,7 +11,7 @@ dotPen reads Markdown files on your Mac and renders them, so a bug that lets a d
 
 ## Reporting a vulnerability
 
-Please don't report a security issue in a public issue or pull request. Open the [Security tab](https://github.com/dotbrainhq/dotmd/security) of this repo and select "Report a vulnerability". Only you and I can see the report.
+Please don't report a security issue in a public issue or pull request. Open the [Security tab](https://github.com/dotbrainhq/dotpen/security) of this repo and select "Report a vulnerability". Only you and I can see the report.
 
 A good report has the version, the steps to reproduce it, what an attacker gains, and a proof of concept if you have one.
 

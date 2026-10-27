@@ -51,8 +51,8 @@ You need macOS 15 or later, Xcode 27, XcodeGen, and Node 22.
 
 ```
 brew install xcodegen
-git clone https://github.com/dotbrainhq/dotmd.git
-cd dotmd
+git clone https://github.com/dotbrainhq/dotpen.git
+cd dotpen
 xcodegen generate
 xcodebuild -project dotPen.xcodeproj -scheme dotPen -configuration Debug -derivedDataPath build build
 open build/Build/Products/Debug/dotPen.app
