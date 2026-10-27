@@ -16,6 +16,8 @@ struct ReaderCommands {
     var markRead: (() -> ())?
     var copyPrompt: (() -> ())?
     var exportPDF: (() -> ())?
+    var print: (() -> ())?
+    var copyMarkdown: (() -> ())?
     var showingSource = false
     var toggleSource: (() -> ())?
 }
@@ -250,6 +252,8 @@ struct CommandPalette: View {
             if let markRead = reader.markRead { commands.append(PaletteCommand(title: "Mark as read", shortcut: "⇧⌘M", action: markRead)) }
             if let copyPrompt = reader.copyPrompt { commands.append(PaletteCommand(title: "Copy as prompt", shortcut: "⇧⌘C", action: copyPrompt)) }
             if let exportPDF = reader.exportPDF { commands.append(PaletteCommand(title: "Export as PDF…", shortcut: "⌘E", action: exportPDF)) }
+            if let print = reader.print { commands.append(PaletteCommand(title: "Print…", shortcut: "⌘P", action: print)) }
+            if let copyMarkdown = reader.copyMarkdown { commands.append(PaletteCommand(title: "Copy as Markdown", shortcut: "⌥⌘C", action: copyMarkdown)) }
             if let toggleSource = reader.toggleSource {
                 commands.append(PaletteCommand(title: reader.showingSource ? "Hide source" : "Show source", shortcut: "⌘U", action: toggleSource))
             }

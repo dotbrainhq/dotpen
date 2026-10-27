@@ -34,6 +34,15 @@ struct ReadingOptionsPopover: View {
                     paperSwatch(.night, name: "Night", fill: AnyShapeStyle(Color(red: 0.07, green: 0.09, blue: 0.09)))
                 }
             }
+            section("Code") {
+                HStack {
+                    Text("Wrap long lines")
+                    Spacer()
+                    Toggle("Wrap long lines", isOn: $options.wrapCode)
+                        .toggleStyle(SwitchToggleStyle())
+                        .labelsHidden()
+                }
+            }
         }
         .padding(14)
         .frame(width: 300)

@@ -45,4 +45,9 @@ Every release of dotPen is listed here. Versions follow semantic versioning.
 - Review changes one at a time: N moves through them, A accepts one, and Send back turns it into a comment for the agent. Accepting never edits the file.
 - Agents can ask for your review and wait. The file gets an amber dot, the page shows the request, the Dock shows how many files are waiting, and Done Reviewing hands your comments to the agent.
 - MDX pages and Cursor's .mdc rule files are watched, opened and previewed in Quick Look like any Markdown file. In MDX, imports, exports, components and expressions show under their names as written, and none of it runs.
+- The outline shows the word count and reading time, and marks the section you're reading with a dot as you scroll.
+- Wrap long code lines from the Aa options. Printed and exported code always wraps, so long lines aren't cut off.
+- Print (⌘P) from the File menu, the share menu or ⌘K, on the same pages as the PDF export.
+- Copy as Markdown (⌥⌘C) in the Edit menu and ⌘K, beside the share menu item.
+- Multi-line code blocks keep their lines close together, as they read in an editor.
 - Increase Contrast strengthens faint text and lines, Reduce Motion stills the remaining motion, and VoiceOver can name the share menu and the filter field.

@@ -11,17 +11,20 @@ public struct ReadingOptions: Codable, Equatable, Sendable {
     public var font: Font
     public var width: Width
     public var paper: Paper
+    /// Long code lines wrap inside their block instead of scrolling sideways.
+    public var wrapCode: Bool
 
-    public init(size: Size = .medium, font: Font = .serif, width: Width = .medium, paper: Paper = .auto) {
+    public init(size: Size = .medium, font: Font = .serif, width: Width = .medium, paper: Paper = .auto, wrapCode: Bool = false) {
         self.size = size
         self.font = font
         self.width = width
         self.paper = paper
+        self.wrapCode = wrapCode
     }
 
     // Written out on purpose: with RawRepresentable below, Swift's built-in Codable would encode through
     // rawValue, which encodes through Codable again, and recurse until the stack overflows.
-    private enum CodingKeys: String, CodingKey { case size, font, width, paper }
+    private enum CodingKeys: String, CodingKey { case size, font, width, paper, wrapCode }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -29,6 +32,7 @@ public struct ReadingOptions: Codable, Equatable, Sendable {
         font = try container.decodeIfPresent(Font.self, forKey: .font) ?? .serif
         width = try container.decodeIfPresent(Width.self, forKey: .width) ?? .medium
         paper = try container.decodeIfPresent(Paper.self, forKey: .paper) ?? .auto
+        wrapCode = try container.decodeIfPresent(Bool.self, forKey: .wrapCode) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -37,6 +41,7 @@ public struct ReadingOptions: Codable, Equatable, Sendable {
         try container.encode(font, forKey: .font)
         try container.encode(width, forKey: .width)
         try container.encode(paper, forKey: .paper)
+        try container.encode(wrapCode, forKey: .wrapCode)
     }
 }
 

@@ -15,15 +15,14 @@ struct ShareMenu: View {
                 .disabled(!canExport)
             Button("Export as HTML…") { exporter.export(as: .html) }
                 .disabled(!canExport)
+            Button("Print…") { exporter.print() }
+                .disabled(!canExport)
             Divider()
             Button("Copy for Slack") { copy(for: .slack) }
                 .disabled(!canExport)
             Button("Copy for Google Docs") { copy(for: .docs) }
                 .disabled(!canExport)
-            Button("Copy as Markdown") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(markdown, forType: .string)
-            }
+            Button("Copy as Markdown") { exporter.copyMarkdown() }
             if let fileURL {
                 Divider()
                 ShareLink(item: fileURL) { Text("Share…") }
@@ -43,7 +42,7 @@ struct ShareMenu: View {
         }
         // The prototype draws share as a plain button, with no menu arrow beside it.
         .menuIndicator(.hidden)
-        .help("Share, export as PDF or HTML")
+        .help("Share, export as PDF or HTML, or print")
     }
 
     /// The page as HTML shaped for where it's going, with the Markdown as plain text for anything that takes only
