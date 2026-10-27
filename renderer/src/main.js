@@ -1,7 +1,7 @@
 import { renderDocument } from './document.js';
 import { createSanitizer } from './sanitize.js';
 import { rewriteLocalImages } from './assets.js';
-import { buildOutline } from './outline.js';
+import { buildOutline, markCurrent } from './outline.js';
 import { applyMarks, fadeMarks, removeMarks, blockAt } from './marks.js';
 import { showChip, nextChangeLine, previousChangeLine, revealBlock } from './chip.js';
 import { createMap } from './map.js';
@@ -49,6 +49,18 @@ window.addEventListener('scroll', () => {
     }
   }, 400);
 }, { passive: true });
+
+// The outline marks the section being read, once a frame at most while scrolling.
+let outlineFrame = 0;
+function followOutline() {
+  if (outlineFrame) return;
+  outlineFrame = requestAnimationFrame(() => {
+    outlineFrame = 0;
+    const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    markCurrent(margin(), document.getElementById('doc'), { atBottom });
+  });
+}
+window.addEventListener('scroll', followOutline, { passive: true });
 
 function changeCount(changes) {
   return (changes.added?.length ?? 0) + (changes.changed?.length ?? 0) + (changes.removed?.length ?? 0);
@@ -188,6 +200,7 @@ function renderSource(doc, markdown) {
   map.setChanges([]);
   clearComments(doc, margin());
   buildOutline(doc, margin(), { reduceMotion: reduceMotion() });
+  followOutline();
   hideSelectionBar(doc);
   selected = null;
 }
@@ -301,6 +314,7 @@ function applyOptions(options = {}) {
   root.dataset.font = options.font ?? 'serif';
   root.dataset.width = options.width ?? 'medium';
   root.dataset.paper = options.paper ?? 'auto';
+  root.dataset.wrapCode = options.wrapCode ? 'on' : 'off';
 }
 
 function pageIsDark() {
@@ -483,6 +497,7 @@ window.dotPen = {
     prepareTasks(doc, tasksEditable);
     decorate(doc);
     buildOutline(doc, margin(), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+    followOutline();
     CSS.highlights?.delete('compose');
     selected = null;
     hideSelectionBar(doc);

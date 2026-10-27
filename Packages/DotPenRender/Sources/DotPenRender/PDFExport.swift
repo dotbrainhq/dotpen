@@ -8,22 +8,37 @@ public enum ExportError: Error {
 /// Paged PDF through the print system, so long documents split into pages with print styles applied.
 @MainActor
 public enum PDFExport {
-    /// Uses the asynchronous runModal(for:) because the synchronous run() deadlocks: WebKit draws the pages
-    /// in its own process and needs the main thread free while it does.
     public static func write(webView: WKWebView, to url: URL) async throws {
-        guard let window = webView.window,
-              let info = NSPrintInfo.shared.copy() as? NSPrintInfo else { throw ExportError.printFailed }
+        guard let info = pageInfo() else { throw ExportError.printFailed }
         info.jobDisposition = .save
         info.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = url
+        guard await run(webView: webView, info: info, showsPanel: false) else { throw ExportError.printFailed }
+    }
+
+    /// Print with the system print panel, on the same pages and print styles as the PDF. Cancelling isn't an error.
+    public static func print(webView: WKWebView) async {
+        guard let info = pageInfo() else { return }
+        _ = await run(webView: webView, info: info, showsPanel: true)
+    }
+
+    private static func pageInfo() -> NSPrintInfo? {
+        guard let info = NSPrintInfo.shared.copy() as? NSPrintInfo else { return nil }
         info.topMargin = 54
         info.bottomMargin = 54
         info.leftMargin = 54
         info.rightMargin = 54
         info.horizontalPagination = .fit
         info.verticalPagination = .automatic
+        return info
+    }
+
+    /// Uses the asynchronous runModal(for:) because the synchronous run() deadlocks: WebKit draws the pages
+    /// in its own process and needs the main thread free while it does.
+    private static func run(webView: WKWebView, info: NSPrintInfo, showsPanel: Bool) async -> Bool {
+        guard let window = webView.window else { return false }
         let operation = webView.printOperation(with: info)
-        operation.showsPrintPanel = false
-        operation.showsProgressPanel = false
+        operation.showsPrintPanel = showsPanel
+        operation.showsProgressPanel = showsPanel
         // Without a frame the web view's print view renders blank pages.
         operation.view?.frame = webView.bounds
         var completion: PrintCompletion?
@@ -38,7 +53,7 @@ public enum PDFExport {
             )
         }
         withExtendedLifetime(completion) {}
-        guard succeeded else { throw ExportError.printFailed }
+        return succeeded
     }
 }
 

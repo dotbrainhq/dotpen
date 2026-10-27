@@ -11,8 +11,14 @@ import Testing
 }
 
 @Test func readingOptionsRoundTripThroughRawValue() {
-    let options = ReadingOptions(size: .large, font: .mono, width: .wide, paper: .night)
+    let options = ReadingOptions(size: .large, font: .mono, width: .wide, paper: .night, wrapCode: true)
     #expect(ReadingOptions(rawValue: options.rawValue) == options)
+}
+
+@Test func codeWrapsOnlyWhenTurnedOn() {
+    #expect(ReadingOptions().wrapCode == false)
+    #expect(ReadingOptions(rawValue: #"{"size":"medium","font":"serif","width":"medium","paper":"auto"}"#)?.wrapCode == false)
+    #expect(ReaderCommand.setReadingOptions(ReadingOptions(wrapCode: true)).javaScript.contains("\"wrapCode\":true"))
 }
 
 @Test func readingOptionsFillMissingFieldsWithDefaults() {
@@ -33,8 +39,8 @@ import Testing
     let json = String(js.dropFirst("window.dotPen.render(".count).dropLast())
     let object = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
     #expect(object?["markdown"] as? String == "# \"Quoted\"\n</script>")
-    let options = object?["options"] as? [String: String]
-    #expect(options?["size"] == "medium")
+    let options = object?["options"] as? [String: Any]
+    #expect(options?["size"] as? String == "medium")
 }
 
 @Test func renderCommandCarriesTheSourceFormat() throws {

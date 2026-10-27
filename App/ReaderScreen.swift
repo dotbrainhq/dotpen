@@ -238,6 +238,8 @@ struct ReaderScreen: View {
             markRead: markRead,
             copyPrompt: copyPrompt,
             exportPDF: showingSource ? nil : { exporter.export(as: .pdf) },
+            print: showingSource ? nil : { exporter.print() },
+            copyMarkdown: { exporter.copyMarkdown() },
             showingSource: showingSource,
             toggleSource: { showingSource.toggle() }
         )
@@ -569,7 +571,7 @@ struct ReaderScreen: View {
     }
 
     private var exporter: DocumentExporter {
-        DocumentExporter(controller: controller, title: fileURL?.lastPathComponent ?? "Untitled", options: options)
+        DocumentExporter(controller: controller, title: fileURL?.lastPathComponent ?? "Untitled", options: options, markdown: text)
     }
 
     /// The window follows the page: Night is dark, White and Paper are light, Auto follows the system.
