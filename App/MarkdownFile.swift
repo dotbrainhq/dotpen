@@ -4,10 +4,13 @@ import UniformTypeIdentifiers
 extension UTType {
     /// Declared in Info.plist as an imported type so dotPen opens .md, .markdown and .mdown files.
     static let markdown = UTType(importedAs: "net.daringfireball.markdown", conformingTo: .plainText)
+    /// MDX and Cursor rules conform to Markdown, so anything that takes Markdown takes them too.
+    static let mdx = UTType(importedAs: "app.dotpen.mdx", conformingTo: .markdown)
+    static let cursorRule = UTType(importedAs: "app.dotpen.cursor-rule", conformingTo: .markdown)
 }
 
 struct MarkdownFile: FileDocument {
-    static let readableContentTypes: [UTType] = [.markdown, .plainText]
+    static let readableContentTypes: [UTType] = [.markdown, .mdx, .cursorRule, .plainText]
 
     var text: String
 

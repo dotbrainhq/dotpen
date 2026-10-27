@@ -1,0 +1,10 @@
+---
+description: How to write Swift in this repo
+globs: **/*.swift
+alwaysApply: false
+---
+# Swift style
+
+- Use `async` and `await` instead of completion handlers.
+- Keep views small. Split a view once it passes 150 lines.
+- Comments explain why, never what.

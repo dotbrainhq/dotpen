@@ -51,13 +51,15 @@ import Testing
     try temp.write("README.md", "# Repo")
     try temp.write("docs/specs/token-bucket.markdown", "# Token bucket")
     try temp.write("docs/notes.txt", "not markdown")
+    try temp.write("site/docs/intro.mdx", "# Intro")
+    try temp.write(".cursor/rules/style.mdc", "---\nalwaysApply: true\n---\n# Style")
     try temp.write("node_modules/pkg/README.md", "# Dependency")
     try temp.write("out/report.md", "# Report")
     try temp.write(".gitignore", "out/\n")
     let result = try #require(FolderScanner.scan(root: temp.url, rules: .load(root: temp.url)))
-    #expect(result.files.map(\.relativePath) == ["README.md", "docs/specs/token-bucket.markdown"])
-    #expect(result.files.map(\.title) == ["Repo", "Token bucket"])
-    #expect(result.files.map(\.kind) == [.readme, .spec])
+    #expect(result.files.map(\.relativePath) == [".cursor/rules/style.mdc", "README.md", "docs/specs/token-bucket.markdown", "site/docs/intro.mdx"])
+    #expect(result.files.map(\.title) == ["Style", "Repo", "Token bucket", "Intro"])
+    #expect(result.files.map(\.kind) == [.agentInstructions, .readme, .spec, .other])
     #expect(Set(result.ignored) == ["node_modules", "out"])
 }
 

@@ -221,6 +221,20 @@ html::-webkit-scrollbar { display: none; }
 .copy { position: absolute; top: 6px; right: 8px; font: 500 11.5px var(--font-ui); color: var(--ink-2); background: var(--bg); border: 0; border-radius: 6px; padding: 3px 8px; box-shadow: 0 0 0 0.5px var(--line); cursor: pointer; opacity: 0; transition: opacity 140ms ease-out; }
 .code-block:hover .copy, .copy:focus-visible { opacity: 1; }
 
+/* MDX: module code, expressions and components, each under the name it has in the source. None of it runs. */
+.mdx-block { margin: 1em 0; }
+.mdx-label { font: 500 11px var(--font-mono); color: var(--ink-3); overflow-wrap: anywhere; }
+.mdx-code { border-radius: 12px; background: var(--code-bg); box-shadow: inset 0 0 0 0.5px var(--line); }
+.mdx-code .mdx-label { padding: 10px 18px 0; }
+.mdx-code pre { margin: 0; padding: 6px 18px 14px; overflow-x: auto; }
+.mdx-code code { display: block; background: none; padding: 0; font-size: 0.74em; line-height: 1.55; }
+.mdx-component { border-radius: 12px; box-shadow: inset 0 0 0 0.5px var(--line); padding: 10px 18px; }
+.mdx-component > .mdx-label { margin-bottom: 4px; }
+.mdx-children > :first-child { margin-top: 0; }
+.mdx-children > :last-child { margin-bottom: 0; }
+.mdx-inline-component { box-shadow: inset 0 -1px 0 var(--line); }
+.mdx-inline-component::before { content: attr(data-component); font: 500 0.7em var(--font-mono); color: var(--ink-3); margin-right: 0.35em; }
+
 .hljs-keyword, .hljs-built_in, .hljs-type { color: #a1306b; }
 .hljs-string, .hljs-attr { color: #1f6f43; }
 .hljs-number, .hljs-literal { color: #1c5fb4; }

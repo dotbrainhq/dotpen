@@ -98,7 +98,7 @@ struct ReaderScreen: View {
             .onChange(of: assetRoot) { _, root in
                 // A window opened before the library loaded starts with the file's own folder as its image root.
                 controller.setDocumentLocation(fileURL, root: root)
-                controller.send(.render(markdown: shownMarkdown, options: options))
+                controller.send(.render(markdown: shownMarkdown, options: options, format: SourceFormat(url: fileURL)))
             }
             .onChange(of: readState, initial: true) { _, state in
                 markReadIfNeeded(state)
@@ -129,7 +129,7 @@ struct ReaderScreen: View {
                 if let document { lastLibraryDocument = document }
             }
             .onChange(of: showAll) {
-                controller.send(.render(markdown: shownMarkdown, options: options))
+                controller.send(.render(markdown: shownMarkdown, options: options, format: SourceFormat(url: fileURL)))
             }
             .onChange(of: showingSource) { _, on in
                 controller.send(.setSource(on))
@@ -665,7 +665,7 @@ struct ReaderScreen: View {
         controller.setDocumentLocation(fileURL, root: assetRoot)
         controller.send(.setLayout(layout))
         controller.send(.setTasksEditable(fileURL.map { FileManager.default.isWritableFile(atPath: $0.path) } ?? false))
-        controller.send(.render(markdown: shownMarkdown, options: options))
+        controller.send(.render(markdown: shownMarkdown, options: options, format: SourceFormat(url: fileURL)))
     }
 
     // MARK: Tasks
@@ -717,7 +717,7 @@ struct ReaderScreen: View {
 
     private func refuseTick() {
         NSSound.beep()
-        controller.send(.render(markdown: shownMarkdown, options: options))
+        controller.send(.render(markdown: shownMarkdown, options: options, format: SourceFormat(url: fileURL)))
     }
 
     /// Runs for as long as the window is open. SwiftUI cancels the task on close, which ends the loop and the observer.
@@ -749,7 +749,7 @@ struct ReaderScreen: View {
         guard newText != text else { return }
         let previous = text
         text = newText
-        controller.send(.render(markdown: shownMarkdown, options: options))
+        controller.send(.render(markdown: shownMarkdown, options: options, format: SourceFormat(url: fileURL)))
         // What just changed glows, whatever the person has read.
         let written = await Task.detached { ChangeDiff.changes(from: previous, to: newText) }.value
         let lines = (written.added.map(\.start) + written.changed.map(\.start)).sorted()
@@ -827,7 +827,7 @@ struct ReaderScreen: View {
         guard let fileURL, URL(string: href)?.scheme == nil else { return nil }
         let raw = String(href.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false).first ?? "")
         let path = raw.removingPercentEncoding ?? raw
-        guard ["md", "markdown", "mdown"].contains((path as NSString).pathExtension.lowercased()) else { return nil }
+        guard FolderScanner.isMarkdown(URL(fileURLWithPath: path)) else { return nil }
         let base = path.hasPrefix("/")
             ? (assetRoot ?? fileURL.deletingLastPathComponent())
             : fileURL.deletingLastPathComponent()

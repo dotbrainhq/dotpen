@@ -5,6 +5,16 @@ public enum ReaderLayout: String, Sendable {
     case files, document
 }
 
+/// How the renderer reads the source. MDX turns on import and export lines, components and expressions, which the
+/// page shows as labeled blocks and never runs. Cursor's .mdc rules are plain Markdown.
+public enum SourceFormat: String, Encodable, Sendable {
+    case markdown, mdx
+
+    public init(url: URL?) {
+        self = url?.pathExtension.lowercased() == "mdx" ? .mdx : .markdown
+    }
+}
+
 /// A comment as the page shows it, beside its passage in the margin.
 public struct PageComment: Encodable, Equatable, Sendable {
     public var id: Int64
@@ -73,7 +83,7 @@ public struct CommentAuthor: Encodable, Equatable, Sendable {
 
 /// Calls from Swift into window.dotPen in the renderer.
 public enum ReaderCommand: Sendable {
-    case render(markdown: String, options: ReadingOptions)
+    case render(markdown: String, options: ReadingOptions, format: SourceFormat = .markdown)
     case setReadingOptions(ReadingOptions)
     /// Marks a change set (DotPenCore's ChangeSet) and shows the chip with when the file was last read.
     case applyMarks(changes: any Encodable & Sendable, since: String)
@@ -106,8 +116,8 @@ public enum ReaderCommand: Sendable {
 
     public var javaScript: String {
         switch self {
-        case let .render(markdown, options):
-            return "window.dotPen.render(\(Self.json(RenderPayload(markdown: markdown, options: options))))"
+        case let .render(markdown, options, format):
+            return "window.dotPen.render(\(Self.json(RenderPayload(markdown: markdown, options: options, format: format))))"
         case let .setReadingOptions(options):
             return "window.dotPen.setReadingOptions(\(Self.json(options)))"
         case let .applyMarks(changes, since):
@@ -144,6 +154,7 @@ public enum ReaderCommand: Sendable {
     private struct RenderPayload: Encodable {
         let markdown: String
         let options: ReadingOptions
+        let format: SourceFormat
     }
 
     private struct MarksPayload: Encodable {

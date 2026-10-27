@@ -458,8 +458,8 @@ document.addEventListener('click', (event) => {
 });
 
 window.dotPen = {
-  async render({ markdown, options }) {
-    lastRender = { markdown, options };
+  async render({ markdown, options, format }) {
+    lastRender = { markdown, options, format };
     applyOptions(options);
     const doc = document.getElementById('doc');
     const y = window.scrollY;
@@ -471,7 +471,7 @@ window.dotPen = {
       return;
     }
     const oldHeights = [...doc.querySelectorAll('figure.mermaid-block')].map((figure) => figure.offsetHeight);
-    doc.innerHTML = renderDocument(markdown, sanitize);
+    doc.innerHTML = renderDocument(markdown, sanitize, { format });
     rewriteLocalImages(doc);
     applyPictureTheme(doc);
     // An image whose source was stripped (http) never fires an error, so it gets its placeholder now.

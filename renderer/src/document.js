@@ -6,6 +6,7 @@ import katex from 'katex';
 import hljs from 'highlight.js/lib/common';
 import { lineNumbers } from './lines.js';
 import { alerts } from './alerts.js';
+import { mdx } from './mdx.js';
 import { splitFrontMatter, statusLineHTML } from './frontmatter.js';
 import { escapeHtml } from './escape.js';
 
@@ -27,14 +28,7 @@ const mathEngine = {
   },
 };
 
-const md = new MarkdownIt({ html: true, linkify: true, typographer: false })
-  .use(taskLists, { enabled: false })
-  .use(footnote)
-  .use(texmath, { engine: mathEngine, delimiters: 'dollars', katexOptions: { throwOnError: false } })
-  .use(alerts)
-  .use(lineNumbers);
-
-md.renderer.rules.fence = (tokens, idx) => {
+function fence(tokens, idx) {
   const token = tokens[idx];
   const lang = (token.info || '').trim().split(/\s+/)[0];
   const lines = token.map ? ` data-line="${token.map[0] + 1}" data-line-end="${token.map[1]}"` : '';
@@ -46,16 +40,35 @@ md.renderer.rules.fence = (tokens, idx) => {
     : escapeHtml(token.content);
   const label = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '';
   return `<figure class="code-block"${lines}>${label}<pre><code class="hljs">${body}</code></pre></figure>\n`;
-};
+}
 
-/** Renders Markdown to HTML. Raw HTML is allowed in the source, so the caller must pass a sanitizer. */
-export function renderDocument(src, sanitize) {
+function createMarkdown({ withMdx }) {
+  const md = new MarkdownIt({ html: true, linkify: true, typographer: false })
+    .use(taskLists, { enabled: false })
+    .use(footnote)
+    .use(texmath, { engine: mathEngine, delimiters: 'dollars', katexOptions: { throwOnError: false } })
+    .use(alerts)
+    .use(lineNumbers);
+  if (withMdx) md.use(mdx);
+  md.renderer.rules.fence = fence;
+  return md;
+}
+
+const markdown = createMarkdown({ withMdx: false });
+const mdxMarkdown = createMarkdown({ withMdx: true });
+
+/**
+ * Renders Markdown, or MDX when format is "mdx", to HTML. Raw HTML is allowed in the source, so the caller must pass
+ * a sanitizer.
+ */
+export function renderDocument(src, sanitize, { format = 'markdown' } = {}) {
   if (typeof sanitize !== 'function') throw new TypeError('renderDocument needs a sanitize function');
   const { body, fields } = splitFrontMatter(src);
   mathNonce = globalThis.crypto.randomUUID();
   mathStore = [];
   const store = mathStore;
   const nonce = mathNonce;
+  const md = format === 'mdx' ? mdxMarkdown : markdown;
   const clean = sanitize(statusLineHTML(fields) + md.render(body));
   return clean.replace(new RegExp(`<span data-math-slot="${nonce}-(\\d+)"></span>`, 'g'), (_, i) => store[Number(i)]);
 }

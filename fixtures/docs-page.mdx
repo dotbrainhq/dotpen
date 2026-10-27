@@ -1,0 +1,43 @@
+---
+title: Install the CLI
+sidebar_position: 2
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+export const version = '0.1.0';
+
+# Install the CLI
+
+{/* Keep the version in sync with the release notes. */}
+
+The command line tool opens files and watches folders. You need version {version} or later.
+
+<Tabs groupId="os">
+  <TabItem value="mac" label="Homebrew">
+
+  Run `brew install dotpen`, then open a plan:
+
+  ```bash
+  dotpen plan.md
+  ```
+
+  </TabItem>
+  <TabItem value="manual" label="From Settings">
+
+  Choose **Settings > General > Install Command**.
+
+  </TabItem>
+</Tabs>
+
+<Callout type="warning">
+
+The command needs **dotPen 0.1.0** or later. Older builds ignore folders.
+
+</Callout>
+
+<Image
+  src="/img/cli.png"
+  alt="dotPen opened from the terminal"
+/>
+
+Status: <Badge text="Beta" />, and <Highlight>folders open in the Files window</Highlight>.
