@@ -7,7 +7,7 @@ struct AboutView: View {
     @State private var copied = false
 
     private static let website = URL(string: "https://dotpen.app")!
-    private static let privacy = URL(string: "https://dotbrainhq.com/privacy")!
+    private static let privacy = URL(string: "https://dotpen.app/privacy")!
     private static let contact = URL(string: "https://dotbrainhq.com/contact")!
 
     var body: some View {
