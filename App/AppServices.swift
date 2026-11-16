@@ -35,6 +35,12 @@ enum AppServices {
 
 /// Hands opened files and folders to AppServices, and offers the Open in dotPen service.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // macOS closes an app's windows on quit unless the user turned that off, which would drop every open tab.
+        // A registered default only applies while the user hasn't set one for dotPen, and ⌥⌘Q still quits without them.
+        UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": true])
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.servicesProvider = ServicesProvider()
         NSUpdateDynamicServices()
