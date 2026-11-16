@@ -8,9 +8,9 @@ public struct ReaderView: NSViewRepresentable {
         self.controller = controller
     }
 
-    public func makeNSView(context: Context) -> WKWebView {
-        controller.webView
+    public func makeNSView(context: Context) -> NSView {
+        controller.container
     }
 
-    public func updateNSView(_ nsView: WKWebView, context: Context) {}
+    public func updateNSView(_ nsView: NSView, context: Context) {}
 }
