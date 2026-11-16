@@ -55,6 +55,35 @@ private func waitFor(_ counter: Counter, atLeast target: Int, timeout: Duration 
     #expect(await waitFor(count, atLeast: 2))
 }
 
+@Test func stopsPollingWhenTheFileStaysGone() async throws {
+    let url = try tempFile("one")
+    let observer = FileObserver(url: url) {}
+    defer { observer.cancel() }
+    try await Task.sleep(for: .milliseconds(100))
+    try FileManager.default.removeItem(at: url)
+    // Past the grace period for replace-style saves.
+    try await Task.sleep(for: .seconds(3))
+    let settled = observer.openAttempts
+    try await Task.sleep(for: .seconds(1))
+    #expect(observer.openAttempts == settled)
+}
+
+@Test func picksUpAFileThatComesBackLater() async throws {
+    let url = try tempFile("one")
+    let count = Counter()
+    let observer = FileObserver(url: url) { count.increment() }
+    defer { observer.cancel() }
+    try await Task.sleep(for: .milliseconds(100))
+    try FileManager.default.removeItem(at: url)
+    try await Task.sleep(for: .seconds(3))
+    let before = count.count
+    try "back".write(to: url, atomically: false, encoding: .utf8)
+    #expect(await waitFor(count, atLeast: before + 1))
+    try await Task.sleep(for: .milliseconds(300))
+    try append(" again", to: url)
+    #expect(await waitFor(count, atLeast: before + 2))
+}
+
 @Test func coalescesBursts() async throws {
     let url = try tempFile("start")
     let count = Counter()
